@@ -37,6 +37,9 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+        with: 
+        localregistry: |
+          https://github.com/DIE-BG/RegistryDIE.git     
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
   docs:
@@ -59,6 +62,9 @@ jobs:
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
+        with: 
+        localregistry: |
+          https://github.com/DIE-BG/RegistryDIE.git     
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
