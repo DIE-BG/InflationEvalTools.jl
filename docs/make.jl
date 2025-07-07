@@ -1,6 +1,10 @@
 using InflationEvalTools
 using Documenter
 
+# Add internal registry
+import Pkg
+Pkg.Registry.add(url = "https://github.com/DIE-BG/RegistryDIE.git")
+
 DocMeta.setdocmeta!(InflationEvalTools, :DocTestSetup, :(using InflationEvalTools); recursive=true)
 
 makedocs(;
