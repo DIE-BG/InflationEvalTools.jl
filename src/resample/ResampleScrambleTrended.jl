@@ -1,12 +1,12 @@
-# ResampleScrambleTrended.jl - Funciones para computar la metodología de
-# remuestreo por meses de ocurrencia, con pesos probabilísticos para recrear la
-# tendencia de los datos
+# ResampleScrambleTrended.jl - Functions to compute the methodology of
+# resampling by months of occurrence, with probabilistic weights to recreate the
+# trend of the data
 
 struct ResampleScrambleTrended <: ResampleFunction
     p::Float64
 end
 
-method_name(fn::ResampleScrambleTrended) = "Bootstrap IID ponderado por meses de ocurrencia"
+method_name(fn::ResampleScrambleTrended) = "IID bootstrap weighted by months of occurrence"
 method_tag(fn::ResampleScrambleTrended) = "RST"
 get_param_function(fn::ResampleScrambleTrended) = cs -> param_rst(cs, fn.p)
 

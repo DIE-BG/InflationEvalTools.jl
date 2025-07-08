@@ -1,38 +1,38 @@
-# Funciones de simulación para CrossEvalConfig
+# Simulation functions for CrossEvalConfig
 
-# Función para generación de trayectorias y parámetros para el procedimiento de validación cruzada de las combinaciones lineales de medidas de inflación 
+# Function for generation of trajectories and parameters for the cross-validation procedure of linear combinations of inflation measures
 function makesim(data::CountryStructure, config::CrossEvalConfig; kwargs...)
 
-    # Obtener parámetro de inflación 
+    # Obtain inflation parameter
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
-    # Diccionario de resultados 
+    # Results dictionary
     cvinputs = Dict{String, Any}()
     cvinputs["config"] = config
-    # Opciones extra para pargentrayinfl
+    # Extra options for pargentrayinfl
     pargenkwargs = filter(e -> first(e) != :K, kwargs)
     
-    # Generar datos para cada subperíodo de entrenamiento y validación
+    # Generate data for each training and validation subperiod
     for (i, evalperiod) in enumerate(config.evalperiods)
           
         traindate = evalperiod.startdate - Month(1)
         cvdate = evalperiod.finaldate
         fmt = dateformat"yy"
-        @info "Iteración $i de validación cruzada" evalperiod traindate cvdate 
+        @info "Cross-validation iteration $i" evalperiod traindate cvdate 
         
-        # Generar trayectorias de inflación y trayectoria paramétrica 
+        # Generate inflation trajectories and parametric trajectory
         for finaldate in (traindate, cvdate)
 
-            # Obtener las llaves para guardar los resultados El formato es el
-            # del prefijo "infl_" o "param_" y los últimos dos años de la fecha
-            # final de cada subperíodo de entrenamiento o validación 
+            # Obtain the keys to save the results. The format is the
+            # prefix "infl_" or "param_" and the last two years of the
+            # final date of each training or validation subperiod
             tray_key = "infl_" * Dates.format(finaldate, fmt)
             param_key = "param_" * Dates.format(finaldate, fmt)
             dates_key = "dates_" * Dates.format(finaldate, fmt)
             sliced_data = data[finaldate]
 
-            # Generar trayectorias de inflación 
+            # Generate inflation trajectories
             if !(tray_key in keys(cvinputs))
-                @info "Generando trayectorias de inflación" finaldate
+                @info "Generating inflation trajectories" finaldate
                 cvinputs[tray_key] = pargentrayinfl(
                     config.inflfn, 
                     config.resamplefn, 
@@ -42,9 +42,9 @@ function makesim(data::CountryStructure, config::CrossEvalConfig; kwargs...)
                 cvinputs[dates_key] = infl_dates(sliced_data)
             end
 
-            # Generar trayectoria paramétrica 
+            # Generate parametric trajectory
             if !(param_key in keys(cvinputs)) 
-                @info "Generando trayectoria paramétrica" finaldate
+                @info "Generating parametric trajectory" finaldate
                 cvinputs[param_key] = param(sliced_data)
             end
 
