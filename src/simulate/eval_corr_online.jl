@@ -67,4 +67,3 @@ function eval_corr_online(
 
     OnlineStats.value(mean_corr)::eltype(csdata)
 end
-end

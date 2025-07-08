@@ -67,4 +67,3 @@ function eval_absme_online(
 
     abs(OnlineStats.value(me))::eltype(csdata)
 end
-end

@@ -120,4 +120,3 @@ module InflationEvalTools
     ## Functions in development 
 
 end
-end
