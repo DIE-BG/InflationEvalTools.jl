@@ -5,6 +5,8 @@ on:
       - main
     tags: ['*']
   pull_request:
+    branches: 
+      - main 
   workflow_dispatch:
 concurrency:
   # Skip intermediate builds: always.
@@ -25,7 +27,6 @@ jobs:
         version:
           - '1.10'
           - '1.11'
-          - 'pre'
         os:
           - ubuntu-latest
         arch:
