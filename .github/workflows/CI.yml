@@ -61,7 +61,9 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(url="https://github.com/DIE-BG/RegistryDIE.git")
-          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.Registry.status()
+          Pkg.status()
+          Pkg.develop(path=pwd())
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
         with: 
