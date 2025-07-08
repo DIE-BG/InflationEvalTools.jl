@@ -20,4 +20,5 @@ makedocs(;
 deploydocs(;
     repo="github.com/DIE-BG/InflationEvalTools.jl",
     devbranch="main",
+    push_preview=true,
 )
