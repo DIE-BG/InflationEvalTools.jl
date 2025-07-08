@@ -61,6 +61,7 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(url="https://github.com/DIE-BG/RegistryDIE.git")
+          Pkg.Registry.add()
           Pkg.Registry.status()
           Pkg.status()
           Pkg.develop(path=pwd())
