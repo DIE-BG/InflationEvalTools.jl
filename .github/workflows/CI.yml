@@ -5,6 +5,8 @@ on:
       - main
     tags: ['*']
   pull_request:
+    branches: 
+      - main 
   workflow_dispatch:
 concurrency:
   # Skip intermediate builds: always.
@@ -23,9 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
+          # - '1.10'
           - '1.11'
-          - 'pre'
         os:
           - ubuntu-latest
         arch:
@@ -40,7 +41,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with: 
           localregistry: |
-            https://github.com/DIE-BG/RegistryDIE.git     
+            https://github.com/DIE-BG/RegistryDIE.git
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
@@ -59,12 +60,16 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.Registry.add(url="https://github.com/DIE-BG/RegistryDIE.git")
+          Pkg.Registry.add()
+          Pkg.Registry.status()
+          Pkg.status()
+          Pkg.develop(path=pwd())
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
         with: 
           localregistry: |
-            https://github.com/DIE-BG/RegistryDIE.git     
+            https://github.com/DIE-BG/RegistryDIE.git
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
