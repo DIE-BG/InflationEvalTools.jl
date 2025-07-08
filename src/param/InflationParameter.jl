@@ -1,16 +1,16 @@
-## Definiciones para obtener un parámetro de inflación 
+## Definitions to obtain an inflation parameter 
 
 """
-Tipo abstracto para representar los parámetros de inflación 
+Abstract type to represent inflation parameters
 """
 abstract type AbstractInflationParameter{F <: InflationFunction, R <: ResampleFunction, T<: TrendFunction} end 
 
 """
-Tipo concreto para representar un parámetro de inflación computado con la
-función de inflación `inflfn`, el método de remuestreo `resamplefn` y función
-de tendencia `trendfn`.
+Concrete type to represent an inflation parameter computed with the
+inflation function `inflfn`, the resampling method `resamplefn`, and trend
+function `trendfn`.
 
-Ver también: [`ParamTotalCPIRebase`](@ref), [`ParamTotalCPI`](@ref), [`ParamWeightedMean`](@ref)
+See also: [`ParamTotalCPIRebase`](@ref), [`ParamTotalCPI`](@ref), [`ParamWeightedMean`](@ref)
 """
 Base.@kwdef struct InflationParameter{F, R, T} <: AbstractInflationParameter{F, R, T}
     inflfn::F = InflationTotalRebaseCPI()
@@ -18,22 +18,22 @@ Base.@kwdef struct InflationParameter{F, R, T} <: AbstractInflationParameter{F, 
     trendfn::T = TrendRandomWalk()
 end
 
-# Método para obtener la trayectoria paramétrica a partir de un CountryStructure
+# Method to obtain the parametric trajectory from a CountryStructure
 function (param::AbstractInflationParameter)(cs::CountryStructure)
-    # Obtener la función para obtener los datos paramétricos (promedio) del método de remuestreo
+    # Obtain the function to get the parametric (average) data from the resampling method
     paramfn = get_param_function(param.resamplefn)
-    # Computar un CountryStructure con datos paramétricos (promedio) 
+    # Compute a CountryStructure with parametric (average) data
     param_data = paramfn(cs)
-    # Aplicamos la tendencia
+    # Apply the trend
     trended_data = param.trendfn(param_data)    
-    # Aplicar la función de inflación para obtener la trayectoria paramétrica
+    # Apply the inflation function to obtain the parametric trajectory
     traj_infl_param = param.inflfn(trended_data)
 
-    # Devolver la trayectoria de inflación paramétrica
+    # Return the parametric inflation trajectory
     traj_infl_param
 end
 
-# Redefinir un método Base.show para InflationParameter
+# Redefine a Base.show method for InflationParameter
 function Base.show(io::IO, param::AbstractInflationParameter)
     println(io, typeof(param))
     println(io, "|─> InflationFunction : " * measure_name(param.inflfn) )
@@ -46,7 +46,7 @@ method_tag(param::InflationParameter) = string("InflParam: [",nameof(param.inflf
 """
     DEFAULT_RESAMPLE_FN
 
-Define la funcón de remuestreo a utilizar por defecto en el ejercicio de simulación.
+Defines the default resampling function to use in the simulation exercise.
 """
 const DEFAULT_RESAMPLE_FN = ResampleSBB(36)
 
@@ -54,7 +54,7 @@ const DEFAULT_RESAMPLE_FN = ResampleSBB(36)
 """
     DEFAULT_TREND_FN
 
-Define la funcón de tendencia a utilizar por defecto en el ejercicio de simulación.
+Defines the default trend function to use in the simulation exercise.
 """
 const DEFAULT_TREND_FN    = TrendRandomWalk()
 
@@ -62,27 +62,27 @@ const DEFAULT_TREND_FN    = TrendRandomWalk()
 """
     ParamTotalCPIRebase()
 
-Función de ayuda para obtener la configuración del parámetro de inflación dado
-por la función de inflación del IPC con cambio de base sintético, y el método de
-remuestreo y función de tendencia por defecto.
+Helper function to obtain the configuration of the inflation parameter given
+by the synthetic base change CPI inflation function, and the default
+resampling method and trend function.
 """
 ParamTotalCPIRebase() = 
     InflationParameter(InflationTotalRebaseCPI(60), DEFAULT_RESAMPLE_FN, DEFAULT_TREND_FN)
 
-# Función para obtener el parámetro con otra función de remuestreo y otra función de tendencia.
+# Function to obtain the parameter with another resampling function and another trend function.
 ParamTotalCPIRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
     InflationParameter(InflationTotalRebaseCPI(60), resamplefn, trendfn)
 
 """
     ParamTotalCPI()
 
-Función de ayuda para obtener la configuración del parámetro de inflación dado
-por la función de inflación del IPC, y el método de remuestreo y función de
-tendencia por defecto.
+Helper function to obtain the configuration of the inflation parameter given
+by the CPI inflation function, and the default resampling method and trend
+function.
 """
 ParamTotalCPI() = InflationParameter(InflationTotalCPI(), DEFAULT_RESAMPLE_FN, DEFAULT_TREND_FN)
 
-# Función para obtener el parámetro con otra función de remuestreo y otra función de tendencia.
+# Function to obtain the parameter with another resampling function and another trend function.
 ParamTotalCPI(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
     InflationParameter(InflationTotalCPI(), resamplefn, trendfn)
 
@@ -90,14 +90,14 @@ ParamTotalCPI(resamplefn::ResampleFunction, trendfn::TrendFunction) =
 """
     ParamTotalCPILegacyRebase()
 
-Función de ayuda para obtener la configuración del parámetro de inflación dado
-por la función de inflación del IPC con cambio de base sintético, y el método de
-remuestreo y función de tendencia por defecto.
+Helper function to obtain the configuration of the inflation parameter given
+by the synthetic base change CPI inflation function, and the default
+resampling method and trend function.
 """
 ParamTotalCPILegacyRebase() = 
     InflationParameter(InflationTotalRebaseCPI(36, 2), ResampleScrambleVarMonths(), DEFAULT_TREND_FN)
 
-# Función para obtener el parámetro con otra función de remuestreo y otra función de tendencia.
+# Function to obtain the parameter with another resampling function and another trend function.
 ParamTotalCPILegacyRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
     InflationParameter(InflationTotalRebaseCPI(36, 2), resamplefn, trendfn)
 
@@ -105,12 +105,12 @@ ParamTotalCPILegacyRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) 
 """
     ParamWeightedMean()
 
-Función de ayuda para obtener la configuración del parámetro de inflación dado
-por la media ponderada interanual y el método de remuestreo por defecto.
+Helper function to obtain the configuration of the inflation parameter given
+by the interannual weighted mean and the default resampling method.
 """
 ParamWeightedMean() = InflationParameter(InflationWeightedMean(), DEFAULT_RESAMPLE_FN, DEFAULT_TREND_FN)
 
-# Función para obtener el parámetro con otra función de remuestreo y otra
-# función de tendencia.
+# Function to obtain the parameter with another resampling function and another
+# trend function.
 ParamWeightedMean(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
     InflationParameter(InflationWeightedMean(), resamplefn, trendfn)

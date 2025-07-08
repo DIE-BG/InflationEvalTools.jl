@@ -1,57 +1,56 @@
-# resample.jl - Estructura general para aplicar funciones de remuestreo a tipos
-# CountryStructure y VarCPIBase
+# resample.jl - General structure to apply resampling functions to types
+# CountryStructure and VarCPIBase
 
 """
     abstract type ResampleFunction <: Function end
-Tipo abstracto para funciones de remuestreo. Cada función debe extender como 
-mínimo el método
+Abstract type for resampling functions. Each function must at least extend the method
 - `resamplefn(vmat::AbstractMatrix, rng)::Matrix` 
-para remuestrear un CountryStructure con las funciones definidas arriba. 
+to resample a CountryStructure with the functions defined above.
 
-Opcionalmente, si se desea modificar el comportamiento específico de cada
-función de remuestreo, se deben extender los siguientes métodos: 
+Optionally, if you want to modify the specific behavior of each
+resampling function, you must extend the following methods:
 - `function (resamplefn::ResampleFunction)(cs::CountryStructure, rng = Random.GLOBAL_RNG)`
 - `function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)`
 """
 abstract type ResampleFunction <: Function end
 
 
-## Métodos de remuestreo para CountryStructure y VarCPIBase
+## Resampling methods for CountryStructure and VarCPIBase
 
 """
     function (resamplefn::ResampleFunction)(cs::CountryStructure, rng = Random.GLOBAL_RNG)
-Define el comportamiento general de función de remuestreo sobre CountryStructure. 
-Se remuestrea cada una de las bases del campo `base` utilizando el método para objetos `VarCPIBase`
-y se devuelve un nuevo `CountryStructure`.
+Defines the general behavior of a resampling function on CountryStructure.
+Each of the bases in the `base` field is resampled using the method for `VarCPIBase` objects,
+and a new `CountryStructure` is returned.
 """
 function (resamplefn::ResampleFunction)(cs::CountryStructure, rng = Random.GLOBAL_RNG)
     
-    # Obtener bases remuestreadas, esto requiere definir un método para manejar
-    # objetos de tipo VarCPIBase
+    # Obtain resampled bases, this requires defining a method to handle
+    # objects of type VarCPIBase
     base_boot = map(b -> resamplefn(b, rng), cs.base)
 
-    # Devolver nuevo CountryStructure con 
+    # Return new CountryStructure with
     typeof(cs)(base_boot)
 end
 
 
 """
     function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)
-Define el comportamiento general de función de remuestreo sobre `VarCPIBase`. 
-Este método requiere una implementación específica del método sobre el par (`AbstractMatrix`, rng). 
-Considera que el método de remuestreo podría extender los períodos de la serie de tiempo y 
-ajusta las fechas apropiadamente.
+Defines the general behavior of a resampling function on `VarCPIBase`.
+This method requires a specific implementation of the method on the pair (`AbstractMatrix`, rng).
+Note that the resampling method could extend the periods of the time series and
+adjusts the dates appropriately.
 """
 function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)
 
-    # Obtener la matriz remuestreada, requiere definir el método para manejar
+    # Obtain the resampled matrix, requires defining the method to handle
     # matrices
     v_boot = resamplefn(base.v, rng)
 
-    # Conformar un nuevo VarCPIBase. Vector de ponderaciones e índices base
-    # inalterados. Las fechas permanecen inalteradas si la función de remuestreo
-    # no extiende los períodos en la matriz de variaciones intermensuales
-    # `base.v` 
+    # Set up a new VarCPIBase. Weight vector and base indices
+    # unchanged. Dates remain unchanged if the resampling function
+    # does not extend the periods in the month-to-month variation matrix
+    # `base.v`
     periods = size(v_boot, 1)
     if periods == size(base.v, 1)
         dates = base.dates
@@ -68,41 +67,41 @@ end
 """
     get_param_function(::ResampleFunction)
 
-Cada función de remuestreo debe realizar la implementación de una función para
-obtener un `CountryStructure` con objetos `VarCPIBase` que contengan las
-variaciones intermensuales promedio (o paramétricas) que permitan construir la
-trayectoria paramétrica de inflación de acuerdo con el método de remuestreo dado
-en `ResampleFunction`.
+Each resampling function must implement a function to
+obtain a `CountryStructure` with `VarCPIBase` objects that contain the
+average (or parametric) month-to-month variations that allow constructing the
+parametric inflation trajectory according to the resampling method given
+in `ResampleFunction`.
 
-Esta función devuelve la función de obtención de datos paramétricos. 
+This function returns the function to obtain parametric data.
 
-## Ejemplo 
+## Example 
 ```julia
-# Obtener la función de remuestreo 
+# Obtain the resampling function
 resamplefn = ResampleSBB(36)
 ...
 
-# Obtener su función para obtener los datos paramétricos 
+# Obtain its function to get the parametric data
 paramdatafn = get_param_function(resamplefn)
-# Obtener CountryStructure de datos paramétricos 
+# Obtain CountryStructure of parametric data
 paramdata = paramdatafn(gtdata)
 ```
 
-Ver también: [`param_sbb`](@ref)
+See also: [`param_sbb`](@ref)
 """
 get_param_function(::ResampleFunction) = 
-    error("Se debe especificar una función para obtener el parámetro de esta función de remuestreo")
+    error("A function must be specified to obtain the parameter of this resampling function")
 
 
 """
     method_name(resamplefn::ResampleFunction)
-Función para obtener el nombre del método de remuestreo.
+Function to obtain the name of the resampling method.
 """
-method_name(::ResampleFunction) = error("Se debe redefinir el nombre del método de remuestreo")
+method_name(::ResampleFunction) = error("The name of the resampling method must be redefined")
 
 """
     method_tag(resamplefn::ResampleFunction)
-Función para obtener una etiqueta del método de remuestreo.
+Function to obtain a tag for the resampling method.
 """
 method_tag(resamplefn::ResampleFunction) = string(nameof(resamplefn))
 

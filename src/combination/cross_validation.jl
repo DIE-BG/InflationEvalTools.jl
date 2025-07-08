@@ -1,4 +1,4 @@
-## Función para obtener error de validación cruzada utilizando CrossEvalConfig 
+## Function to obtain cross-validation error using CrossEvalConfig 
 
 """
     crossvalidate(
@@ -13,47 +13,46 @@
         components_mask = Colon(), 
         add_intercept::Bool = false) -> (cv_results::Matrix [, weights::Vector]) 
 
-Lleva a cabo un proceso de combinación lineal de medidas de inflación y
-evaluación de validación sobre subperíodos futuros. Las medidas de inflación a
-combinarse son generadas con la configuración `config` de tipo
-[`CrossEvalConfig`](@ref), así como los parámetros de simulación y los períodos
-de evaluación.
+Carries out a process of linear combination of inflation measures and
+validation evaluation over future subperiods. The inflation measures to be
+combined are generated with the `config` configuration of type
+[`CrossEvalConfig`](@ref), as well as the simulation parameters and evaluation
+periods.
 
-El diccionario `crossvaldata` contiene las trayectorias de inflación, la
-trayectoria paramétrica y las fechas de cada período de combinación y
-evaluación. El diccionario `crossvaldata` es producido por [`makesim`](@ref)
-para un `CrossEvalConfig`. Se hace de esta forma para que las trayectorias de
-inflación estén precomputadas, ya que sería muy costoso generarlas al vuelo. 
+The `crossvaldata` dictionary contains the inflation trajectories, the
+parametric trajectory, and the dates of each combination and evaluation period.
+The `crossvaldata` dictionary is produced by [`makesim`](@ref) for a
+`CrossEvalConfig`. This is done so that the inflation trajectories are
+precomputed, as it would be very costly to generate them on the fly.
 
-La función `weightsfunction` recibe una tupla `(tray_infl, tray_param)` y
-obtiene ponderaciones de combinación para las medidas en `tray_infl`. Por
-ejemplo, se puede utilizar directamente la función
-[`combination_weights`](@ref), o una función anónima construida con
-[`ridge_combination_weights`](@ref) o [`lasso_combination_weights`](@ref).
+The `weightsfunction` function receives a tuple `(tray_infl, tray_param)` and
+obtains combination weights for the measures in `tray_infl`. For example, you
+can directly use the [`combination_weights`](@ref) function, or an anonymous
+function built with [`ridge_combination_weights`](@ref) or
+[`lasso_combination_weights`](@ref).
 
-Los parámetros opcionales son:  
-- `show_status::Bool = true`: muestra información sobre cada período de ajuste
-  de ponderadores (subperíodo de entrenamiento) y resultados de las métricas en
-  los subperíodos de validación.
-- `print_weights::Bool = true`: indica si se deben imprimir los vectores de
-  ponderaciones obtenidos en cada iteración de entrenamiento y evaluación.
-- `return_weights::Bool = false`: indica si se devuelve el vector de ponderación
-  del último período.
-- `metrics::Vector{Symbol} = [:mse]`: vector de métricas a reportar en cada
-  iteración de entrenamiento y evaluación. Las métricas son obtenidas por
+Optional parameters:  
+- `show_status::Bool = true`: shows information about each weight adjustment
+  period (training subperiod) and results of the metrics in the validation
+  subperiods.
+- `print_weights::Bool = true`: indicates whether to print the weight vectors
+  obtained in each training and evaluation iteration.
+- `return_weights::Bool = false`: indicates whether to return the weight vector
+  of the last period.
+- `metrics::Vector{Symbol} = [:mse]`: vector of metrics to report in each
+  training and evaluation iteration. The metrics are obtained by
   [`eval_metrics`](@ref).
-- `train_start_date::Date = Date(2000, 12)`: fecha de inicio para el subperíodo
-  de los datos de entrenamiento sobre el cual se obtienen los ponderadores de
-  combinación.
-- `components_mask = (:)`: máscara a aplicar sobre las columnas de `tray_infl`
-  en la combinación y evaluación. Utilizado para excluir una o más medidas del
-  proceso de ajustes de ponderadores y evaluación fuera de muestra.
-- `add_intercept::Bool = false`: indica si se debe agregar una columna de unos
-  en las trayectorias de inflación a combinar. Si el `ensemblefn` de `config`
-  contiene una `InflationConstant` como primera entrada, este argumento
-  no es necesario. Utilizado para obtener un intercepto en la combinación lineal
-  de trayectorias de inflación y que los ponderadores obtenidos de la
-  combinación representen variaciones alrededor de este intercepto.
+- `train_start_date::Date = Date(2000, 12)`: start date for the training
+  subperiod of the data over which the combination weights are obtained.
+- `components_mask = (:)`: mask to apply to the columns of `tray_infl` in the
+  combination and evaluation. Used to exclude one or more measures from the
+  weight adjustment and out-of-sample evaluation process.
+- `add_intercept::Bool = false`: indicates whether to add a column of ones to
+  the inflation trajectories to combine. If the `ensemblefn` of `config`
+  contains an `InflationConstant` as the first entry, this argument is not
+  necessary. Used to obtain an intercept in the linear combination of inflation
+  trajectories so that the weights obtained from the combination represent
+  variations around this intercept.
 """
 function crossvalidate(
     weightsfunction::Function,
@@ -134,9 +133,9 @@ end
 """
     add_ones(tray_infl) -> Array{<:AbstractFloat, 3}
 
-Agrega intercepto al cubo de trayectorias en la primera columna. Si las
-dimensiones de entrada de `tray_infl` son `(T, n, K)`, esta función devuelve un
-arreglo con dimensiones `(T+1, n, K)`.
+Adds an intercept to the trajectory cube in the first column. If the
+input dimensions of `tray_infl` are `(T, n, K)`, this function returns an
+array with dimensions `(T+1, n, K)`.
 """
 function add_ones(tray_infl)
     T, _, K = size(tray_infl)

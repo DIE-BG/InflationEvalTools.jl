@@ -1,28 +1,27 @@
-# eval_absme_online.jl - Generación de ABSME de optimización online  
+# eval_absme_online.jl - Generation of online optimization ABSME  
 
 """
     eval_absme_online(config::SimConfig, csdata::CountryStructure; 
         K = 1000, 
         rndseed = DEFAULT_SEED) -> absme
 
-Función para obtener evaluación del valor absoluto de error medio utilizando
-configuración de evaluación [`SimConfig`](@ref). Se deben proveer los datos de
-evaluación en `csdata`, con los cuales se desee computar la trayectoria
-paramétrica de comparación. Devuelve la métrica de valor absoluto como un
-escalar.
+Function to obtain evaluation of the mean absolute error value using
+[`SimConfig`](@ref) evaluation configuration. The evaluation data must be
+provided in `csdata`, with which the comparison parametric trajectory is to be
+computed. Returns the absolute value metric as a scalar.
 
-Esta función se puede utilizar para optimizar los parámetros de diferentes
-medidas de inflación y es más eficiente en memoria que [`pargentrayinfl`](@ref). 
+This function can be used to optimize the parameters of different
+inflation measures and is more memory efficient than [`pargentrayinfl`](@ref).
 """
 function eval_absme_online(config::SimConfig, csdata::CountryStructure; 
     K = 1000, 
     rndseed = DEFAULT_SEED)
 
-    # Crear el parámetro y obtener la trayectoria paramétrica
+    # Create the parameter and obtain the parametric trajectory
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
     tray_infl_param = param(csdata)
 
-    # Desempaquetar la configuración 
+    # Unpack the configuration
     eval_absme_online(config.inflfn, config.resamplefn, config.trendfn, csdata, tray_infl_param; K, rndseed)
 end
 
@@ -36,10 +35,10 @@ end
         tray_infl_param::Vector{<:AbstractFloat}; 
         K = 1000, rndseed = DEFAULT_SEED) -> absme
 
-Función para obtener evaluación de valor absoluto de error medio (ABSME)
-utilizando la configuración especificada. Se requiere la trayectoria paramétrica
-`tray_infl_param` para evitar su cómputo repetidamente en esta función. Devuelve
-el ABSME como un escalar.
+Function to obtain evaluation of the mean absolute error value (ABSME)
+using the specified configuration. The parametric trajectory
+`tray_infl_param` is required to avoid repeatedly computing it in this function. Returns
+the ABSME as a scalar.
 """
 function eval_absme_online(
     inflfn::InflationFunction,
@@ -49,17 +48,17 @@ function eval_absme_online(
     tray_infl_param::Vector{<:AbstractFloat}; 
     K = 1000, rndseed = DEFAULT_SEED)
 
-    # Tarea de cómputo de trayectorias
+    # Trajectory computation task
     me = @showprogress @distributed (OnlineStats.merge) for k in 1:K 
-        # Configurar la semilla en el proceso
+        # Set the seed in the process
         Random.seed!(LOCAL_RNG, rndseed + k)
 
-        # Muestra de bootstrap de los datos 
+        # Bootstrap sample of the data
         bootsample = resamplefn(csdata, LOCAL_RNG)
-        # Aplicación de la función de tendencia 
+        # Application of the trend function
         trended_sample = trendfn(bootsample)
 
-        # Computar la medida de inflación y el ABSME
+        # Compute the inflation measure and the ABSME
         tray_infl = inflfn(trended_sample)
         err = (tray_infl - tray_infl_param) 
         o = OnlineStats.Mean(eltype(csdata))

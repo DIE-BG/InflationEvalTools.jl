@@ -1,43 +1,43 @@
-## Método de solución analítica de ponderadores de la combinación lineal óptima del MSE 
+## Analytical solution method for optimal MSE linear combination weights 
 
 """
     combination_weights(tray_infl, tray_infl_param) -> Vector{<:AbstractFloat}
 
-Obtiene los ponderadores óptimos de la solución analítica al problema de
-minimización del error cuadrático medio de la combinación lineal de estiamadores
-de inflación en `tray_infl` utilizando la trayectoria de inflación paramétrica
+Obtains the optimal weights from the analytical solution to the problem of
+minimizing the mean squared error of the linear combination of inflation
+estimators in `tray_infl` using the parametric inflation trajectory
 `tray_infl_param`. 
 
-Devuelve un vector con los ponderadores asociados a cada estimador en las
-columnas de `tray_infl`.
+Returns a vector with the weights associated with each estimator in the
+columns of `tray_infl`.
 
-Ver también: [`ridge_combination_weights`](@ref),
+See also: [`ridge_combination_weights`](@ref),
 [`lasso_combination_weights`](@ref), [`share_combination_weights`](@ref),
 [`elastic_combination_weights`](@ref). 
 """
 function combination_weights(tray_infl, tray_infl_param)
-    # Obtener matriz de ponderadores XᵀX y vector Xᵀπ
+    # Get the weights matrix XᵀX and vector Xᵀπ
     XᵀX, Xᵀπ = average_mats(tray_infl, tray_infl_param)
-    @debug "Determinante de la matriz de coeficientes" det(XᵀX)
+    @debug "Determinant of the coefficient matrix" det(XᵀX)
 
-    # Ponderadores de combinación óptima de mínimos cuadrados
+    # Optimal least squares combination weights
     a_optim = XᵀX \ Xᵀπ
     a_optim 
 end
 
-# Matriz de diseño y de covarianza con parámetro, promediadas en tiempo y
-# a través de las realizaciones 
+# Design and covariance matrix with parameter, averaged over time and
+# across realizations 
 """
     average_mats(tray_infl, tray_infl_param) -> (Matrix{<:AbstractFloat}, Vector{<:AbstractFloat})
 
-Obtiene las matrices `XᵀX` y `Xᵀπ` para el problema de minimización del error
-cuadrático medio. 
+Obtains the matrices `XᵀX` and `Xᵀπ` for the mean squared error minimization
+problem. 
 """
 function average_mats(tray_infl, tray_infl_param)
-    # Número de ponderadores, observaciones y simulaciones 
+    # Number of weights, observations, and simulations 
     T, n, K = size(tray_infl)
 
-    # Conformar la matriz de coeficientes
+    # Build the coefficient matrix
     XᵀX = zeros(eltype(tray_infl), n, n)
     XᵀX_temp = zeros(eltype(tray_infl), n, n)
     for j in 1:K
@@ -46,10 +46,10 @@ function average_mats(tray_infl, tray_infl_param)
         XᵀX_temp ./= T
         XᵀX += XᵀX_temp
     end
-    # Promedios en número de realizaciones
+    # Average over number of realizations
     XᵀX /= K
 
-    # Interceptos como función del parámetro y las trayectorias a combinar
+    # Intercepts as a function of the parameter and the trajectories to combine
     Xᵀπ = zeros(eltype(tray_infl), n)
     Xᵀπ_temp = zeros(eltype(tray_infl), n)
     for j in 1:K
@@ -58,57 +58,57 @@ function average_mats(tray_infl, tray_infl_param)
         Xᵀπ_temp ./= T
         Xᵀπ += Xᵀπ_temp
     end
-    # Promedios en número de realizaciones
+    # Average over number of realizations
     Xᵀπ /= K
 
     XᵀX, Xᵀπ
 end
 
-# Ponderadores de combinación Ridge con parámetro de regularización lambda
+# Ridge combination weights with regularization parameter lambda
 """
     ridge_combination_weights(tray_infl, tray_infl_param, lambda; 
         penalize_all = true) -> Vector{<:AbstractFloat}
 
-Obtiene ponderadores óptimos de Ridge a través de la solución analítica al
-problema de minimización del error cuadrático medio de la combinación lineal de
-estimadores de inflación en `tray_infl` utilizando la trayectoria de inflación
-paramétrica `tray_infl_param`, regularizada con la norma L2 de los ponderadores,
-ponderada por el parámetro `lambda`.
+Obtains optimal Ridge weights through the analytical solution to the problem of
+minimizing the mean squared error of the linear combination of inflation
+estimators in `tray_infl` using the parametric inflation trajectory
+`tray_infl_param`, regularized with the L2 norm of the weights, weighted by the
+parameter `lambda`.
 
-Devuelve un vector con los ponderadores asociados a cada estimador en las
-columnas de `tray_infl`.
+Returns a vector with the weights associated with each estimator in the
+columns of `tray_infl`.
 
-Los parámetros opcionales son:  
-- `penalize_all` (`Bool`): indica si aplicar la regularización a todos los
-  ponderadores. Si es falso, se aplica la regularización a partir del segundo al
-  último componente del vector de ponderaciones. Por defecto es `true`.
+Optional parameters:  
+- `penalize_all` (`Bool`): indicates whether to apply regularization to all
+  weights. If false, regularization is applied from the second to the last
+  component of the weights vector. Default is `true`.
 
-Ver también: [`combination_weights`](@ref), [`lasso_combination_weights`](@ref),
+See also: [`combination_weights`](@ref), [`lasso_combination_weights`](@ref),
 [`share_combination_weights`](@ref), [`elastic_combination_weights`](@ref).
 """
 function ridge_combination_weights(
     tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda; 
     penalize_all = true) where F
 
-    # Si lambda == 0, solución de mínimos cuadrados
+    # If lambda == 0, least squares solution
     lambda == 0 && return combination_weights(tray_infl, tray_infl_param)
 
-    # Obtener matriz de ponderadores XᵀX y vector Xᵀπ
+    # Get the weights matrix XᵀX and vector Xᵀπ
     XᵀX, Xᵀπ = average_mats(tray_infl, tray_infl_param)
     λ = convert(F, lambda)
     n = size(tray_infl, 2)
     
-    # Ponderadores de combinación óptima de Ridge
+    # Optimal Ridge combination weights
     Iₙ = I(n)
-    # Si penalize_all=false, no se penaliza el primer componente, que debería
-    # corresponder al intercepto de la regresión. Para esto, la primera columna
-    # de tray_infl de contener 1's.
+    # If penalize_all=false, do not penalize the first component, which should
+    # correspond to the regression intercept. For this, the first column of
+    # tray_infl should contain 1's.
     if !penalize_all
         Iₙ[1] = 0
     end
 
     XᵀX′ = XᵀX + λ*Iₙ
-    @debug "Determinante de la matriz de coeficientes" det(XᵀX) det(XᵀX′)
+    @debug "Determinant of the coefficient matrix" det(XᵀX) det(XᵀX′)
     a_ridge = XᵀX′ \ Xᵀπ
     a_ridge 
 end

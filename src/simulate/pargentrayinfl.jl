@@ -1,18 +1,18 @@
 """
     const LOCAL_RNG = StableRNG(0)
-Esta constante se utiliza para fijar el generador de números aleatorios en cada
-proceso local, utilizando el generador `StableRNG` con semilla inicial cero. La
-semilla será alterada en cada iteración del proceso de simulación. Esto
-garantiza la reproducibilidad de los resultados por realización de remuestreo
-escogiendo la constante [`DEFAULT_SEED`](@ref). 
+This constant is used to set the random number generator in each
+local process, using the `StableRNG` generator with initial seed zero. The
+seed will be altered in each iteration of the simulation process. This
+guarantees the reproducibility of the results per resampling realization
+by choosing the constant [`DEFAULT_SEED`](@ref).
 """
 const LOCAL_RNG = StableRNG(0)
 
 
-## Función de generación de trayectorias de inflación de simulación 
-# Esta función considera como argumento la función de remuestreo para poder
-# aplicar diferentes metodologías en la generación de trayectorias, así como la
-# función de tendencia aplicar 
+## Function to generate simulated inflation trajectories
+# This function considers the resampling function as an argument to be able
+# to apply different methodologies in the generation of trajectories, as well as the
+# trend function to apply 
 
 """
     pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
@@ -20,15 +20,15 @@ const LOCAL_RNG = StableRNG(0)
         rndseed = DEFAULT_SEED, 
         showprogress = true)
 
-Computa `K` trayectorias de inflación utilizando la función de inflación
-`inflfn::``InflationFunction`, la función de remuestreo
-`resamplefn::``TrendFunction` y la función de tendencia
-`trendfn::``TrendFunction` especificada. Se utilizan los datos en el
-`CountryStructure` dado en `csdata`.
+Computes `K` inflation trajectories using the inflation function
+`inflfn::``InflationFunction`, the resampling function
+`resamplefn::``TrendFunction` and the specified trend function
+`trendfn::``TrendFunction`. The data in the given `CountryStructure`
+`csdata` are used.
 
-A diferencia de la función [`gentrayinfl`](@ref), esta función implementa el
-cómputo distribuido en procesos utilizando `@distributed`. Esto requiere que el
-paquete haya sido cargado en todos los procesos de cómputo. Por ejemplo: 
+Unlike the [`gentrayinfl`](@ref) function, this function implements
+distributed computation in processes using `@distributed`. This requires that the
+package has been loaded in all compute processes. For example:
 
 ```julia 
 using Distributed
@@ -36,12 +36,12 @@ addprocs(4, exeflags="--project")
 @everywhere using HEMI 
 ```
 
-Para lograr la reproducibilidad entre diferentes corridas de la función, y de
-esta forma, generar trayectorias de inflación con diferentes metodologías
-utilizando los mismos remuestreos, se fija la semilla de generación de acuerdo
-con el número de iteración en la simulación. Para controlar el inicio de la
-generación de trayectorias se utiliza como parámetro de desplazamiento el valor
-`rndseed`, cuyo valor por defecto es la semilla [`DEFAULT_SEED`](@ref). 
+To achieve reproducibility between different runs of the function, and thus
+generate inflation trajectories with different methodologies using the same
+resamplings, the generation seed is set according to the iteration number in
+the simulation. To control the start of the trajectory generation, the
+`rndseed` offset parameter is used, whose default value is the seed
+[`DEFAULT_SEED`](@ref).
 """
 function pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, 
     csdata::CountryStructure; 
@@ -49,37 +49,37 @@ function pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T,
     rndseed = DEFAULT_SEED, 
     showprogress = true) where {F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction}
 
-    # Cubo de trayectorias de inflación de salida
+    # Output cube of inflation trajectories
     periods = infl_periods(csdata)
     n_measures = num_measures(inflfn)
     tray_infl = SharedArray{eltype(csdata)}(periods, n_measures, K)
 
-    # Variables para el control de progreso
+    # Variables for progress control
     progress= Progress(K, enabled=showprogress)
     channel = RemoteChannel(()->Channel{Bool}(K), 1)
 
-    # Tarea asíncrona para actualizar el progreso
+    # Asynchronous task to update progress
     @async while take!(channel)
         next!(progress)
     end
         
-    # Tarea de cómputo de trayectorias
+    # Trajectory computation task
     @sync @distributed for k in 1:K 
-        # Configurar la semilla en el proceso
+        # Set the seed in the process
         Random.seed!(LOCAL_RNG, rndseed + k)
         
-        # Muestra de bootstrap de los datos 
+        # Bootstrap sample of the data
         bootsample = resamplefn(csdata, LOCAL_RNG)
-        # Aplicación de la función de tendencia 
+        # Application of the trend function
         trended_sample = trendfn(bootsample)
 
-        # Computar la medida de inflación 
+        # Compute the inflation measure
         tray_infl[:, :, k] = inflfn(trended_sample)
 
         put!(channel, true)
     end 
     put!(channel, false)
 
-    # Retornar las trayectorias
+    # Return the trajectories
     sdata(tray_infl)
 end
