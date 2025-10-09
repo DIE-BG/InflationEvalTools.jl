@@ -93,18 +93,3 @@ function sbb_inds(resample_sbb_fn::ResampleSBB, numobs::Int, numobsresample::Int
     end
     return inds
 end
-
-# Obtener variaciones intermensuales promedio de los mismos meses de ocurrencia.
-# Se remuestrean `numobsresample` observaciones de las series de tiempo en las
-# columnas de `vmat`. 
-function monthavg(vmat, numobsresample = size(vmat, 1))
-    # Crear la matriz de promedios 
-    cols = size(vmat, 2)
-    avgmat = Matrix{eltype(vmat)}(undef, numobsresample, cols)
-    
-    # Llenar la matriz de promedios con los promedios de cada mes 
-    for i in 1:12
-        avgmat[i:12:end, :] .= mean(vmat[i:12:end, :], dims=1)
-    end
-    return avgmat
-end

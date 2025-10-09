@@ -69,7 +69,7 @@ module InflationEvalTools
     include("trend/TrendFunction.jl")
 
     ## Métodos para obtener las bases de variaciones intermensuales paramétricas
-    export param_gsbb_mod, param_sbb
+    export param_gsbb_mod, param_sbb, param_scramblevar_fn
     include("param/param.jl")
 
     export InflationParameter, ParamTotalCPIRebase, ParamTotalCPI, ParamWeightedMean

@@ -68,7 +68,7 @@ serie de tiempo en las columnas de una matriz.
 struct ResampleScrambleVarMonths <: ResampleFunction end
 
 # Definir cuál es la función para obtener bases paramétricas 
-get_param_function(::ResampleScrambleVarMonths) = param_sbb
+get_param_function(::ResampleScrambleVarMonths) = param_scramblevar_fn
 
 # Define cómo remuestrear matrices con las series de tiempo en las columnas.
 # Utiliza la función interna `scramblevar`.
@@ -79,3 +79,42 @@ end
 # Definir el nombre y la etiqueta del método de remuestreo 
 method_name(resamplefn::ResampleScrambleVarMonths) = "Bootstrap IID por meses de ocurrencia"
 method_tag(resamplefn::ResampleScrambleVarMonths) = "SVM"
+
+
+#     param_scramblevar_fn(base::VarCPIBase)
+#
+# Obtiene la matriz de variaciones intermensuales paramétricas para la
+# metodología de remuestreo de por meses de ocurrencia. Devuelve una base de
+# tipo `VarCPIBase` con las variaciones intermensuales promedio de los mismos meses
+# de ocurrencia (también llamadas variaciones intermensuales paramétricas). 
+#
+# Esta definición también aplica a otras metodologías que utilicen como variaciones 
+# intermensuales paramétricas los promedios en los mismos meses de ocurrencia. 
+function param_scramblevar_fn(base::VarCPIBase)
+
+    # Obtener matriz de promedios mensuales
+    month_mat = monthavg(base.v)
+
+    # Conformar base de variaciones intermensuales promedio
+    VarCPIBase(month_mat, base.w, base.dates, base.baseindex)
+end
+
+function param_scramblevar_fn(cs::CountryStructure)
+    pob_base = map(param_scramblevar_fn, cs.base)
+    getunionalltype(cs)(pob_base)
+end
+
+# Obtener variaciones intermensuales promedio de los mismos meses de ocurrencia.
+# Se remuestrean `numobsresample` observaciones de las series de tiempo en las
+# columnas de `vmat`. 
+function monthavg(vmat, numobsresample = size(vmat, 1))
+    # Crear la matriz de promedios 
+    cols = size(vmat, 2)
+    avgmat = Matrix{eltype(vmat)}(undef, numobsresample, cols)
+    
+    # Llenar la matriz de promedios con los promedios de cada mes 
+    for i in 1:12
+        avgmat[i:12:end, :] .= mean(vmat[i:12:end, :], dims=1)
+    end
+    return avgmat
+end
