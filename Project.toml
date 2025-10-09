@@ -1,7 +1,7 @@
 name = "InflationEvalTools"
 uuid = "938eba31-db9c-42f6-bde0-f3baed5865b3"
 authors = ["Rodrigo Chang <rrcp777@gmail.com> and contributors"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 CPIDataBase = "bc2aee9a-d1f8-4cce-8750-9c1afc923989"
