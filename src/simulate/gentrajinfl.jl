@@ -22,9 +22,9 @@ con el número de iteración en la simulación. Para controlar el inicio de la
 generación de trayectorias se utiliza como parámetro de desplazamiento el valor
 `rndseed`, cuyo valor por defecto es la semilla [`DEFAULT_SEED`](@ref). 
 """
-function gentrayinfl(inflfn::F, resamplefn::R, trendfn::T, 
+function gentrajinfl(inflfn::F, resamplefn::R, trendfn::T, 
     csdata::CountryStructure; 
-    K = 100, 
+    trj = 100, 
     rndseed = DEFAULT_SEED, 
     showprogress = true) where {F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction}
 
@@ -34,24 +34,24 @@ function gentrayinfl(inflfn::F, resamplefn::R, trendfn::T,
     # Cubo de trayectorias de salida
     periods = infl_periods(csdata)
     n_measures = num_measures(inflfn)
-    tray_infl = zeros(Float32, periods, n_measures, K)
+    tray_infl = zeros(Float32, periods, n_measures, trj)
 
     # Control de progreso
-    p = Progress(K; enabled = showprogress)
+    p = Progress(trj; enabled = showprogress)
 
     # Generar las trayectorias
-    for k in 1:K 
+    for i in 1:trj 
         # Muestra de bootstrap de los datos 
         bootsample = resamplefn(csdata, myrng)
         # Aplicación de la función de tendencia 
         trended_sample = trendfn(bootsample)
 
         # Computar la medida de inflación 
-        tray_infl[:, :, k] = inflfn(trended_sample)
+        tray_infl[:, :, i] = inflfn(trended_sample)
         
         ProgressMeter.next!(p)
     end
 
     # Retornar las trayectorias
-    tray_infl
+    traj_infl
 end

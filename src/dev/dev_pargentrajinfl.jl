@@ -1,44 +1,44 @@
 # Versión experimental con configuración de semilla por iteración
-function pargentrayinfl_seed(inflfn::InflationFunction, csdata::CountryStructure; 
-    K = 100, rndseed = 161803, showprogress = true)
+function pargentrajinfl_seed(inflfn::InflationFunction, csdata::CountryStructure; 
+    trj = 100, rndseed = 161803, showprogress = true)
 
     # Matriz de trayectorias de salida
     T = sum(size(gtdata[i].v, 1) for i in 1:length(gtdata.base)) - 11
-    tray_infl = SharedArray{Float32}(T, K)
+    traj_infl = SharedArray{Float32}(T, trj)
 
     # Generar las trayectorias
-    @sync @showprogress @distributed for k in 1:K 
+    @sync @showprogress @distributed for i in 1:trj 
         
         # Replicación simulación por simulación
-        Random.seed!(rndseed + k)
+        Random.seed!(rndseed + i)
         
         # Muestra de bootstrap de los datos 
         bootsample = deepcopy(csdata)
         scramblevar!(bootsample)
 
         # Computar la medida de inflación 
-        tray_infl[:, k] = inflfn(bootsample)
+        traj_infl[:, i] = inflfn(bootsample)
     end
 
     # Retornar las trayectorias
-    sdata(tray_infl)
+    sdata(traj_infl)
 end
 
 
 # Versión experimental con opción de control de progreso
-function pargentrayinfl_prog(inflfn::InflationFunction, csdata::CountryStructure; 
-    K = 100, rndseed = 161803, showprogress = true)
+function pargentrajinfl_prog(inflfn::InflationFunction, csdata::CountryStructure; 
+    trj = 100, rndseed = 161803, showprogress = true)
 
     # Configurar la semilla en workers
     remote_seed(rndseed)
 
     # Matriz de trayectorias de salida
     T = sum(size(gtdata[i].v, 1) for i in 1:length(gtdata.base)) - 11
-    tray_infl = SharedArray{Float32}(T, K)
+    traj_infl = SharedArray{Float32}(T, trj)
 
     # Control de progreso
-    p = Progress(K; enabled = true)
-    channel = RemoteChannel(() -> Channel{Bool}(K), 1)
+    p = Progress(trj; enabled = true)
+    channel = RemoteChannel(() -> Channel{Bool}(trj), 1)
 
     @sync begin 
         # this task prints the progress bar
@@ -48,13 +48,13 @@ function pargentrayinfl_prog(inflfn::InflationFunction, csdata::CountryStructure
     
         # Esta tarea genera las trayectorias
         @async begin 
-            @distributed for k in 1:K 
+            @distributed for i in 1:trj 
                 # Muestra de bootstrap de los datos 
                 bootsample = deepcopy(csdata)
                 scramblevar!(bootsample)
 
                 # Computar la medida de inflación 
-                tray_infl[:, k] = inflfn(bootsample)
+                traj_infl[:, i] = inflfn(bootsample)
                 
                 # ProgressMeter
                 put!(channel, true)
@@ -63,18 +63,18 @@ function pargentrayinfl_prog(inflfn::InflationFunction, csdata::CountryStructure
         end
     end
     # Retornar las trayectorias
-    sdata(tray_infl)
+    sdata(traj_infl)
 end
 
 
 # export pargentrayinfl_pmap
 # Versión con pmap es más lenta
-function pargentrayinfl_pmap(inflfn::F, csdata::CS; 
-    K = 100, rndseed = 161803, showprogress = true) where {F <: InflationFunction, CS <: CountryStructure}
+function pargentrajinfl_pmap(inflfn::F, csdata::CS; 
+    trj = 100, rndseed = 161803, showprogress = true) where {F <: InflationFunction, CS <: CountryStructure}
 
-    p = Progress(K, barglyphs=BarGlyphs("[=> ]"), enabled = showprogress)
+    p = Progress(trj, barglyphs=BarGlyphs("[=> ]"), enabled = showprogress)
     
-    tray_infl = progress_pmap(1:K, progress=p) do k
+    traj_infl = progress_pmap(1:trj, progress=p) do k
         # Configurar la semilla en el proceso
         Random.seed!(LOCAL_RNG, rndseed + k)
 
@@ -88,5 +88,5 @@ function pargentrayinfl_pmap(inflfn::F, csdata::CS;
 
     # Retornar las trayectorias
     # cat(tray_infl...; dims=3)
-    tray_infl
+    traj_infl
 end

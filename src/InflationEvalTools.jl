@@ -85,8 +85,8 @@ module InflationEvalTools
     
     ## Funciones de generación de trayectorias
     export gentrayinfl, pargentrayinfl
-    include("simulate/gentrayinfl.jl")
-    include("simulate/pargentrayinfl.jl") 
+    include("simulate/gentrajinfl.jl")
+    include("simulate/pargentrajinfl.jl") 
     
     ## Funciones de evaluación y métricas   
     export evalsim, makesim, dict_config, run_batch
@@ -119,6 +119,6 @@ module InflationEvalTools
     include("combination/cross_validation.jl")
 
     ## Funciones en desarrollo 
-    include("dev/dev_pargentrayinfl.jl")
+    include("dev/dev_pargentrajinfl.jl")
 
 end
