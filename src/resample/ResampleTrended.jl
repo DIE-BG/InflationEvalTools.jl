@@ -1,22 +1,22 @@
-# ResampleTrended.jl - Funciones para computar la metodología de
-# remuestreo por meses de ocurrencia, con pesos probabilísticos para recrear la
-# tendencia de los datos. El parámetro p es individual por cada base de un 
+# ResampleTrended.jl - Functions to compute the methodology of
+# resampling by months of occurrence, with probabilistic weights to recreate the
+# trend of the data. The parameter p is individual for each base of a
 # CountryStructure
 
 struct ResampleTrended{T<:AbstractFloat} <: ResampleFunction
     p::Vector{T}
 end
 
-method_name(fn::ResampleTrended) = "Bootstrap IID ponderado por meses de ocurrencia, bases individuales"
+method_name(fn::ResampleTrended) = "IID bootstrap weighted by months of occurrence, individual bases"
 method_tag(fn::ResampleTrended) = "RSTI"
 get_param_function(fn::ResampleTrended) = cs -> param_rst(cs, fn.p)
 
 # Overload this method to operate the resample function by base
 function (resamplefn::ResampleTrended)(cs::CountryStructure, rng = Random.GLOBAL_RNG)
-    # Obtener bases remuestreadas
+    # Obtain resampled bases
     ps = (resamplefn.p...,)
     base_boot = map((b, p) -> resamplefn(b, p, rng), cs.base, ps)
-    # Devolver nuevo CountryStructurej
+    # Return new CountryStructure
     typeof(cs)(base_boot)
 end
 

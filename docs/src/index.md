@@ -4,11 +4,112 @@ CurrentModule = InflationEvalTools
 
 # InflationEvalTools
 
-Documentation for [InflationEvalTools](https://github.com/DIE-BG/InflationEvalTools.jl).
+Types, functions, and simulation utilities for the evaluation of inflation measures.
 
-```@index
+## Resampling Methods
+
+Resampling functions for CPI bases and related utilities.
+
+```@docs
+ResampleSBB
+ResampleGSBB
+ResampleGSBBMod
+ResampleScrambleVarMonths
+ResampleScrambleTrended
+ResampleTrended
+get_param_function
+method_name
+method_tag
 ```
 
-```@autodocs
-Modules = [InflationEvalTools]
+## Trend Functions
+
+Functions for trend application and modeling.
+
+```@docs
+RWTREND
+TrendRandomWalk
+TrendAnalytical
+TrendExponential
+TrendIdentity
+```
+
+## Parametric Base Methods
+
+Methods to obtain bases of population monthly price changes.
+
+```@docs
+param_gsbb_mod
+param_sbb
+InflationParameter
+ParamTotalCPIRebase
+ParamTotalCPI
+ParamWeightedMean
+ParamTotalCPILegacyRebase
+```
+
+## Simulation Configuration
+
+Types and utilities for simulation and evaluation period configuration.
+
+```@docs
+AbstractConfig
+SimConfig
+CrossEvalConfig
+CompletePeriod
+EvalPeriod
+eval_periods
+period_tag
+GT_EVAL_B00
+GT_EVAL_B10
+GT_EVAL_T0010
+```
+
+## Trajectory Generation
+
+Functions for generating inflation trajectories.
+
+```@docs
+gentrayinfl
+pargentrayinfl
+```
+
+## Evaluation & Metrics
+
+Functions for simulation evaluation and metrics.
+
+```@docs
+evalsim
+makesim
+dict_config
+run_batch
+eval_metrics
+combination_metrics
+eval_mse_online
+eval_absme_online
+eval_corr_online
+```
+
+## Combination Methods
+
+Optimal combination of estimators and related utilities.
+
+```@docs
+combination_weights
+average_mats
+ridge_combination_weights
+lasso_combination_weights
+share_combination_weights
+elastic_combination_weights
+metric_combination_weights
+absme_combination_weights
+```
+
+## Cross-Validation
+
+Functions for cross-validation and related utilities.
+
+```@docs
+add_ones
+crossvalidate
 ```

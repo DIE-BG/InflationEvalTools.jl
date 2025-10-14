@@ -1,4 +1,4 @@
-# Función de generación de trayectorias de inflación sin computación paralela
+# Function to generate inflation trajectories without parallel computation
 
 """
     gentrayinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
@@ -6,21 +6,21 @@
         rndseed = DEFAULT_SEED, 
         showprogress = true)
 
-Computa `K` trayectorias de inflación utilizando la función de inflación
-`inflfn::``InflationFunction`, la función de remuestreo
-`resamplefn::``TrendFunction` y la función de tendencia
-`trendfn::``TrendFunction` especificada. Se utilizan los datos en el
-`CountryStructure` dado en `csdata`.
+Computes `K` inflation trajectories using the inflation function
+`inflfn::``InflationFunction`, the resampling function
+`resamplefn::``TrendFunction` and the specified trend function
+`trendfn::``TrendFunction`. The data in the given `CountryStructure`
+`csdata` are used.
 
-A diferencia de la función [`pargentrayinfl`](@ref), esta función no realiza el
-cómputo de forma  distribuida. 
+Unlike the [`pargentrayinfl`](@ref) function, this function does not perform
+the computation in a distributed manner.
 
-Para lograr la reproducibilidad entre diferentes corridas de la función, y de
-esta forma, generar trayectorias de inflación con diferentes metodologías
-utilizando los mismos remuestreos, se fija la semilla de generación de acuerdo
-con el número de iteración en la simulación. Para controlar el inicio de la
-generación de trayectorias se utiliza como parámetro de desplazamiento el valor
-`rndseed`, cuyo valor por defecto es la semilla [`DEFAULT_SEED`](@ref). 
+To achieve reproducibility between different runs of the function, and thus
+generate inflation trajectories with different methodologies using the same
+resamplings, the generation seed is set according to the iteration number in
+the simulation. To control the start of the trajectory generation, the
+`rndseed` offset parameter is used, whose default value is the seed
+[`DEFAULT_SEED`](@ref).
 """
 function gentrayinfl(inflfn::F, resamplefn::R, trendfn::T, 
     csdata::CountryStructure; 
@@ -28,30 +28,30 @@ function gentrayinfl(inflfn::F, resamplefn::R, trendfn::T,
     rndseed = DEFAULT_SEED, 
     showprogress = true) where {F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction}
 
-    # Configurar el generador de números aleatorios
+    # Set up the random number generator
     myrng = MersenneTwister(rndseed)
 
-    # Cubo de trayectorias de salida
+    # Output cube of trajectories
     periods = infl_periods(csdata)
     n_measures = num_measures(inflfn)
     tray_infl = zeros(Float32, periods, n_measures, K)
 
-    # Control de progreso
+    # Progress control
     p = Progress(K; enabled = showprogress)
 
-    # Generar las trayectorias
+    # Generate the trajectories
     for k in 1:K 
-        # Muestra de bootstrap de los datos 
+        # Bootstrap sample of the data
         bootsample = resamplefn(csdata, myrng)
-        # Aplicación de la función de tendencia 
+        # Application of the trend function
         trended_sample = trendfn(bootsample)
 
-        # Computar la medida de inflación 
+        # Compute the inflation measure
         tray_infl[:, :, k] = inflfn(trended_sample)
         
         ProgressMeter.next!(p)
     end
 
-    # Retornar las trayectorias
+    # Return the trajectories
     tray_infl
 end

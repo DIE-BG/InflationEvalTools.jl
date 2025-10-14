@@ -1,7 +1,7 @@
 # scramblevar.jl - Functions to resample VarCPIBase objects
 
-# Esta es la mejor versión, requiere crear copias de los vectores de los mismos
-# meses, para cada gasto básico. Se presenta una versión más eficiente abajo
+# This is the best version, it requires creating copies of the vectors of the same
+# months, for each basic expenditure. A more efficient version is presented below
 # 475.600 μs (2618 allocations: 613.20 KiB)
 
 # function scramblevar!(vmat::AbstractMatrix, rng = Random.GLOBAL_RNG) 
@@ -20,10 +20,10 @@
 #     scrambled_mat
 # end
 
-# Primera versión con remuestreo por columnas 
+# First version with column resampling 
 # function scramblevar(vmat::AbstractMatrix, rng = Random.GLOBAL_RNG) 
 #     periods, n = size(vmat)
-#     # Matriz de valores remuestreados 
+#     # Matrix of resampled values 
 #     v_sc = similar(vmat) 
 #     for i in 1:min(periods, 12)
 #         v_month = vmat[i:12:periods, :]
@@ -31,22 +31,22 @@
 #         for g in 1:n 
 #             v_month[:, g] = rand(rng, v_month[:, g], periods_month)
 #         end       
-#         # Asignar valores de los mismos meses
+#         # Assign values of the same months
 #         v_sc[i:12:periods, :] = v_month
 #     end
 #     v_sc
 # end
 
-# Versión optimizada para memoria 
+# Memory-optimized version 
 # 420.100 μs (2 allocations: 204.45 KiB)
 function scramblevar(vmat::AbstractMatrix, rng = Random.GLOBAL_RNG) 
     periods, n = size(vmat)
 
-    # Matriz de valores remuestreados 
+    # Matrix of resampled values 
     v_sc = similar(vmat) 
 
-    # Para cada mes y cada gasto básico, tomar aleatoriamente de los mismos
-    # meses de vmat y llenar v_sc (v_scrambled)
+    # For each month and each basic expenditure, randomly take from the same
+    # months of vmat and fill v_sc (v_scrambled)
     for i in 1:min(periods, 12), g in 1:n 
         Random.rand!(rng, view(v_sc, i:12:periods, g), view(vmat, i:12:periods, g))        
     end    
@@ -54,42 +54,42 @@ function scramblevar(vmat::AbstractMatrix, rng = Random.GLOBAL_RNG)
 end
 
 
-## Remuestreo de objetos de CPIDataBase
-# Se define una ResampleFunction para implementar interfaz a VarCPIBase y CountryStructure
+## Resampling of CPIDataBase objects
+# A ResampleFunction is defined to implement the interface to VarCPIBase and CountryStructure
 
-# Definición de la función de remuestreo por ocurrencia de meses
+# Definition of the resampling function by month of occurrence
 """
     ResampleScrambleVarMonths <: ResampleFunction
 
-Define una función de remuestreo para remuestrear las series de tiempo por los
-mismos meses de ocurrencia. El muestreo se realiza de manera independiente para 
-serie de tiempo en las columnas de una matriz. 
+Defines a resampling function to resample the time series by the
+same months of occurrence. The sampling is performed independently for each
+time series in the columns of a matrix.
 """
 struct ResampleScrambleVarMonths <: ResampleFunction end
 
-# Definir cuál es la función para obtener bases paramétricas 
+# Define which function to use to obtain the population CPI datasets
 get_param_function(::ResampleScrambleVarMonths) = param_scramblevar_fn
 
-# Define cómo remuestrear matrices con las series de tiempo en las columnas.
-# Utiliza la función interna `scramblevar`.
+# Define how to resample matrices with time series in the columns.
+# Uses the internal function `scramblevar`.
 function (resamplefn::ResampleScrambleVarMonths)(vmat::AbstractMatrix, rng = Random.GLOBAL_RNG) 
     scramblevar(vmat, rng)
 end 
 
-# Definir el nombre y la etiqueta del método de remuestreo 
-method_name(resamplefn::ResampleScrambleVarMonths) = "Bootstrap IID por meses de ocurrencia"
+# Define the name and tag of the resampling method 
+method_name(resamplefn::ResampleScrambleVarMonths) = "IID bootstrap by months of occurrence"
 method_tag(resamplefn::ResampleScrambleVarMonths) = "SVM"
 
 
-#     param_scramblevar_fn(base::VarCPIBase)
-#
-# Obtiene la matriz de variaciones intermensuales paramétricas para la
-# metodología de remuestreo de por meses de ocurrencia. Devuelve una base de
-# tipo `VarCPIBase` con las variaciones intermensuales promedio de los mismos meses
-# de ocurrencia (también llamadas variaciones intermensuales paramétricas). 
-#
-# Esta definición también aplica a otras metodologías que utilicen como variaciones 
-# intermensuales paramétricas los promedios en los mismos meses de ocurrencia. 
+"""
+    param_scramblevar_fn(base::VarCPIBase)
+
+Obtains the matrix of population monthly price changes for the B-TIMA
+bootstrap resampling methodology by the same calendar months. Returns a
+`VarCPIBase` type base with the average month-to-month variations of the same
+months of occurrence (also called population monthly price changes).
+
+"""
 function param_scramblevar_fn(base::VarCPIBase)
 
     # Obtener matriz de promedios mensuales
