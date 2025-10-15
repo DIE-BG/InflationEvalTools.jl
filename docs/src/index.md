@@ -52,7 +52,6 @@ Types and utilities for simulation and evaluation period configuration.
 ```@docs
 AbstractConfig
 SimConfig
-CrossEvalConfig
 CompletePeriod
 EvalPeriod
 PeriodVector
