@@ -11,9 +11,6 @@ Types, functions, and simulation utilities for the evaluation of inflation measu
 Resampling functions for CPI bases and related utilities.
 
 ```@docs
-ResampleSBB
-ResampleGSBB
-ResampleGSBBMod
 ResampleScrambleVarMonths
 ResampleScrambleTrended
 ResampleTrended
