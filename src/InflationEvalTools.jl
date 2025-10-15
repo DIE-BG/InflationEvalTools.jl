@@ -83,9 +83,9 @@ module InflationEvalTools
     include("config/SimConfig.jl")
     
     ## Functions for trajectory generation
-    export gentrayinfl, pargentrayinfl
+    export gentrayinfl, pargentrajinfl
     include("simulate/gentrayinfl.jl")
-    include("simulate/pargentrayinfl.jl") 
+    include("simulate/pargentrajinfl.jl") 
     
     ## Functions for evaluation and metrics   
     export dict2config

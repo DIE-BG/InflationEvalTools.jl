@@ -10,8 +10,8 @@
 Generate the parametric (population) trajectory, simulated inflation
 trajectories and evaluation metrics using a [`SimConfig`](@ref).
 
-Returns a tuple `(metrics, tray_infl)` where `metrics` is a dictionary of
-evaluation measures and `tray_infl` is a 3‑D array with dimensions
+Returns a tuple `(metrics, traj_infl)` where `metrics` is a dictionary of
+evaluation measures and `traj_infl` is a 3‑D array with dimensions
 `(T, 1, K)` (T = time steps, K = number of bootstrap realizations).
 
 Arguments
@@ -31,29 +31,29 @@ See also [`eval_metrics`](@ref) for details on the metric names stored in
 `metrics`.
 """
 function compute_lowlevel_sim(
-        data::CountryStructure, config::SimConfig;
-        rndseed = DEFAULT_SEED,
-        shortmetrics = false,
-        showprogress = false,
-    )
+    data::CountryStructure, config::SimConfig;
+    rndseed=DEFAULT_SEED,
+    shortmetrics=false,
+    showprogress=false,
+)
 
     # Get data up to the configuration date
     data_eval = data[config.traindate]
 
     # Get the population trend inflation trajectory
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
-    tray_infl_pob = param(data_eval)
+    traj_infl_pob = param(data_eval)
 
     @info "B-TIMA assessment simulation" measure = measure_name(config.inflfn) resample = method_name(config.resamplefn) trend = method_name(config.trendfn) assessment = measure_name(config.paramfn) simulations = config.nsim traindate = config.traindate periods = config.evalperiods
 
     # Generate the simulated inflation trajectories
-    tray_infl = Distributed.@sync pargentrayinfl(
+    traj_infl = Distributed.@sync pargentrajinfl(
         config.inflfn, # inflation function
         config.resamplefn, # resampling function
         config.trendfn, # trend function
         data_eval; # evaluation data
         rndseed,
-        K = config.nsim,
+        numreplications=config.nsim,
         showprogress,
     )
 
@@ -61,14 +61,14 @@ function compute_lowlevel_sim(
     metrics = mapreduce(merge, config.evalperiods) do period
         mask = eval_periods(data_eval, period)
         prefix = period_tag(period)
-        metrics = @views eval_metrics(tray_infl[mask, :, :], tray_infl_pob[mask]; shortmetrics, prefix)
+        metrics = @views eval_metrics(traj_infl[mask, :, :], traj_infl_pob[mask]; shortmetrics, prefix)
         metrics
     end
     # Show the main assessment metrics by default, the RMSE
     @info "Assessment metrics:" filter(t -> contains(string(t), "rmse"), metrics)...
 
     # Return these values
-    return metrics, tray_infl
+    return metrics, traj_infl
 end
 
 # Function to obtain results dictionary and trajectories from a
@@ -102,12 +102,12 @@ julia> results = compute_assessment_sim(gtdata, config)
 ```
 """
 function compute_assessment_sim(
-        data::CountryStructure, config::SimConfig;
-        rndseed = DEFAULT_SEED,
-        savetrajectories = false,
-        shortmetrics = false,
-        showprogress = false,
-    )
+    data::CountryStructure, config::SimConfig;
+    rndseed=DEFAULT_SEED,
+    savetrajectories=false,
+    shortmetrics=false,
+    showprogress=false,
+)
 
     # Run the simulation and get the results
     metrics, trajinfl = compute_lowlevel_sim(
@@ -172,12 +172,12 @@ After the batch completes, use `collect_results(savepath)` to assemble a
 `DataFrame` with the stored metrics.
 """
 function run_assessment_batch(
-        data::CountryStructure, dict_list_params, savepath::AbstractString;
-        rndseed = DEFAULT_SEED,
-        savetrajectories = false,
-        shortmetrics = false,
-        showprogress = true,
-    )
+    data::CountryStructure, dict_list_params, savepath::AbstractString;
+    rndseed=DEFAULT_SEED,
+    savetrajectories=false,
+    shortmetrics=false,
+    showprogress=true,
+)
 
     # Run batch of simulations
     for (i, dict_params) in enumerate(dict_list_params)
