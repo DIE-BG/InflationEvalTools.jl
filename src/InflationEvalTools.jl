@@ -35,7 +35,7 @@ module InflationEvalTools
 
 
     ## Resampling functions for CPI bases
-    export ResampleSBB, ResampleGSBB, ResampleScrambleVarMonths, ResampleGSBBMod
+    export ResampleScrambleVarMonths
     export ResampleScrambleTrended
     export ResampleTrended
     export get_param_function, method_name, method_tag
@@ -46,13 +46,6 @@ module InflationEvalTools
     # Resampling method using selection of the same months of
     # occurrence
     include("resample/ResampleScrambleVarMonths.jl")
-    # Resampling method with Stationary Block Bootstrap
-    include("resample/ResampleSBB.jl")
-    # Resampling method with Generalized Seasonal Block Bootstrap modified
-    # for 300 output observations
-    include("resample/ResampleGSBBMod.jl")
-    # Resampling method with Generalized Seasonal Block Bootstrap 
-    include("resample/ResampleGSBB.jl")
     # Resampling method using selection of the same months of
     # occurrence with weighted distributions to maintain correlation in
     # the resampling
