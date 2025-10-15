@@ -16,16 +16,16 @@ const LOCAL_RNG = StableRNG(0)
 
 """
     pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
-        K = 100, 
+        numreplications = 100, 
         rndseed = DEFAULT_SEED, 
         showprogress = true)
 
-Computes `K` inflation trajectories using the inflation function
+Computes `numreplications inflation trajectories using the inflation function
 `inflfn::``InflationFunction`, the resampling function
 `resamplefn::``TrendFunction` and the specified trend function
 `trendfn::``TrendFunction`. The data in the given `CountryStructure`
 `csdata` are used.
-
+tray_infl
 Unlike the [`gentrayinfl`](@ref) function, this function implements
 distributed computation in processes using `@distributed`. This requires that the
 package has been loaded in all compute processes. For example:
@@ -43,45 +43,45 @@ the simulation. To control the start of the trajectory generation, the
 `rndseed` offset parameter is used, whose default value is the seed
 [`DEFAULT_SEED`](@ref).
 """
-function pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, 
-    csdata::CountryStructure; 
-    K = 100, 
-    rndseed = DEFAULT_SEED, 
-    showprogress = true) where {F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction}
+function pargentrajinfl(inflfn::F, resamplefn::R, trendfn::T,
+    csdata::CountryStructure;
+    numreplications=100,
+    rndseed=DEFAULT_SEED,
+    showprogress=true) where {F<:InflationFunction,R<:ResampleFunction,T<:TrendFunction}
 
     # Output cube of inflation trajectories
     periods = infl_periods(csdata)
     n_measures = num_measures(inflfn)
-    tray_infl = SharedArray{eltype(csdata)}(periods, n_measures, K)
+    traj_infl = SharedArray{eltype(csdata)}(periods, n_measures, numreplications)
 
     # Variables for progress control
-    progress= Progress(K, enabled=showprogress)
-    channel = RemoteChannel(()->Channel{Bool}(K), 1)
+    progress = Progress(numreplications, enabled=showprogress)
+    channel = RemoteChannel(() -> Channel{Bool}(numreplications), 1)
 
-    @sync begin 
+    @sync begin
         # Asynchronous task to update progress
         @async while take!(channel)
             next!(progress)
         end
-            
+
         # Trajectory computation task
-        @sync @distributed for k in 1:K 
+        @sync @distributed for k in 1:numreplications
             # Set the seed in the process
             Random.seed!(LOCAL_RNG, rndseed + k)
-            
+
             # Bootstrap sample of the data
             bootsample = resamplefn(csdata, LOCAL_RNG)
             # Application of the trend function
             trended_sample = trendfn(bootsample)
 
             # Compute the inflation measure
-            tray_infl[:, :, k] = inflfn(trended_sample)
+            traj_infl[:, :, k] = inflfn(trended_sample)
 
             put!(channel, true)
-        end 
+        end
         put!(channel, false)
     end
 
     # Return the trajectories
-    sdata(tray_infl)
+    sdata(traj_infl)
 end
