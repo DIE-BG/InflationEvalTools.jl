@@ -231,11 +231,11 @@ end
 # This is done by the struct2dict() function from DrWatson
 
 """
-    dict_config(params::Dict)
+    dict2config(params::Dict)
 
 Function to convert a parameter dictionary to `SimConfig` or `CrossEvalConfig`.
 """
-function dict_config(params::Dict)
+function dict2config(params::Dict)
     # CrossEvalConfig contains the field of evaluation periods 
     if (:traindate in keys(params))
         if (:evalperiods in keys(params))
@@ -250,5 +250,5 @@ function dict_config(params::Dict)
 end
 
 # Optional method for list of configurations
-dict_config(params::AbstractVector) = dict_config.(params)
+dict2config(params::AbstractVector) = dict2config.(params)
 

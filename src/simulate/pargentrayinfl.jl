@@ -58,27 +58,29 @@ function pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T,
     progress= Progress(K, enabled=showprogress)
     channel = RemoteChannel(()->Channel{Bool}(K), 1)
 
-    # Asynchronous task to update progress
-    @async while take!(channel)
-        next!(progress)
+    @sync begin 
+        # Asynchronous task to update progress
+        @async while take!(channel)
+            next!(progress)
+        end
+            
+        # Trajectory computation task
+        @sync @distributed for k in 1:K 
+            # Set the seed in the process
+            Random.seed!(LOCAL_RNG, rndseed + k)
+            
+            # Bootstrap sample of the data
+            bootsample = resamplefn(csdata, LOCAL_RNG)
+            # Application of the trend function
+            trended_sample = trendfn(bootsample)
+
+            # Compute the inflation measure
+            tray_infl[:, :, k] = inflfn(trended_sample)
+
+            put!(channel, true)
+        end 
+        put!(channel, false)
     end
-        
-    # Trajectory computation task
-    @sync @distributed for k in 1:K 
-        # Set the seed in the process
-        Random.seed!(LOCAL_RNG, rndseed + k)
-        
-        # Bootstrap sample of the data
-        bootsample = resamplefn(csdata, LOCAL_RNG)
-        # Application of the trend function
-        trended_sample = trendfn(bootsample)
-
-        # Compute the inflation measure
-        tray_infl[:, :, k] = inflfn(trended_sample)
-
-        put!(channel, true)
-    end 
-    put!(channel, false)
 
     # Return the trajectories
     sdata(tray_infl)
