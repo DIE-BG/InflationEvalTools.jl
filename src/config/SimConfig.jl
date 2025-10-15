@@ -87,71 +87,6 @@ SimConfig(inflfn, resamplefn, trendfn, paramfn, nsim, traindate) =
     SimConfig(inflfn, resamplefn, trendfn, paramfn, nsim, traindate, 
     # Default period configuration
     (CompletePeriod(), GT_EVAL_B00, GT_EVAL_T0010, GT_EVAL_B10))
-    
-
-
-
-"""
-    CrossEvalConfig{F, R, T} <:AbstractConfig{F, R, T}
-    CrossEvalConfig(ensemblefn, resamplefn, trendfn, paramfn, nsim, evalperiods)
-
-`CrossEvalConfig` is a concrete type that contains the base configuration to
-generate simulations using a set of inflation functions to be combined.
-
-It receives a
-- ensemble inflation function `EnsembleFunction`, 
-- a resampling function `ResampleFunction`, 
-- a trend function `TrendFunction`, 
-- the number of simulations to perform `nsim`, 
-- a period (or set of periods) of evaluation [`EvalPeriod`](@ref) in
-  which evaluation metrics for cross-validation will be obtained. The
-  training period is considered from the start of the sample up to the
-  period prior to each given evaluation period.
-
-## Example
-
-Considering a set of inflation, resampling, trend, and parametric inflation functions: 
-
-```
-julia> ensemblefn = EnsembleFunction(InflationPercentileEq(72), InflationPercentileWeighted(68));
-
-julia> resamplefn = ResampleSBB(36); 
-
-julia> trendfn = TrendRandomWalk(); 
-
-julia> paramfn = InflationTotalRebaseCPI(60); 
-```
-
-We generate a `CrossEvalConfig` configuration with 10000 simulations,
-configuring two evaluation periods for the cross-validation methods.
-
-```
-julia> config = CrossEvalConfig(ensemblefn, resamplefn, trendfn, paramfn, 10000, 
-       (EvalPeriod(Date(2016, 1), Date(2017, 12), "cv1617"), 
-       EvalPeriod(Date(2017, 1), Date(2018, 12), "cv1718")))
-CrossEvalConfig{InflationTotalRebaseCPI, ResampleSBB, TrendRandomWalk{Float32}}
-|─> Inflation function            : ["Percentil equiponderado 72.0", "Percentil ponderado 68.0"]
-|─> Resampling function           : Block bootstrap estacionario con bloque esperado 36
-|─> Trend function                : Tendencia de caminata aleatoria
-|─> Parametric inflation method   : Variación interanual IPC con cambios de base sintéticos (60, 0)
-|─> Number of simulations         : 10000
-|─> Evaluation periods            : cv1617:Jan-16-Dec-17 y cv1718:Jan-17-Dec-18
-```
-"""
-Base.@kwdef struct CrossEvalConfig{F, R, T} <:AbstractConfig{F, R, T}
-    # Set of inflation functions to obtain trajectories to combine 
-    inflfn::EnsembleFunction
-    # Resampling function
-    resamplefn::R
-    # Trend function
-    trendfn::T
-    # Parametric inflation function 
-    paramfn::F
-    # Number of simulations to perform 
-    nsim::Int
-    # Collection of evaluation period(s), by default the complete period 
-    evalperiods::Union{EvalPeriod, Vector{EvalPeriod}, NTuple{N, EvalPeriod} where N}
-end
 
 # Configurations to show function names in savename
 Base.string(inflfn::InflationFunction) = measure_tag(inflfn)
@@ -200,32 +135,7 @@ function DrWatson.savename(prefix::String, config::SimConfig, suffix::String; kw
     ], DEFAULT_CONNECTOR) * _suffix 
 end
 
-# Extension of savename for CrossEvalConfig
-DrWatson.savename(config::CrossEvalConfig, suffix::String = "jld2"; kwargs...) = 
-    savename(DrWatson.default_prefix(config), config, suffix; kwargs...)
-
-function DrWatson.savename(prefix::String, config::CrossEvalConfig, suffix::String = "jld2"; kwargs...)
-    _prefix = prefix == "" ? "" : prefix * "_"
-    _suffix = suffix != "" ? "." * suffix : ""
-    num_infl_functions = length(config.inflfn.functions)
-    num_eval_periods = length(config.evalperiods)
-    startdate = minimum(map(p -> p.startdate, config.evalperiods))
-    finaldate = maximum(map(p -> p.finaldate, config.evalperiods))
-
-    _prefix * join([
-        # Ensemble inflation function denoted by CrossEvalConfig
-        "CrossEvalConfig($num_infl_functions, $num_eval_periods)", 
-        method_tag(config.resamplefn), # Resampling function 
-        method_tag(config.trendfn), # Trend function
-        measure_tag(config.paramfn), # Parametric inflation function for evaluation
-        config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Number of simulations
-        Dates.format(startdate, COMPACT_DATE_FORMAT) * "-" * Dates.format(finaldate, COMPACT_DATE_FORMAT)
-    ], DEFAULT_CONNECTOR) * _suffix
-end
-
-
 # Helper functions
-
 
 ## Method to convert from AbstractConfig to Dictionary
 # This is done by the struct2dict() function from DrWatson
@@ -233,18 +143,13 @@ end
 """
     dict2config(params::Dict)
 
-Function to convert a parameter dictionary to `SimConfig` or `CrossEvalConfig`.
+Function to convert a parameter dictionary to `SimConfig`.
 """
 function dict2config(params::Dict)
-    # CrossEvalConfig contains the field of evaluation periods 
-    if (:traindate in keys(params))
-        if (:evalperiods in keys(params))
-            config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate], params[:evalperiods])
-        else 
-            config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate])
-        end
-    else
-        config = CrossEvalConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:evalperiods])
+    if (:evalperiods in keys(params))
+        config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate], params[:evalperiods])
+    else 
+        config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate])
     end
     config 
 end

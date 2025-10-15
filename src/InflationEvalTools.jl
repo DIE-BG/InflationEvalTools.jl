@@ -106,11 +106,6 @@ module InflationEvalTools
     include("combination/metric_combination_weights.jl")
     include("combination/absme_combination_weights.jl")
 
-    ## Functions for cross-validation
-    export add_ones
-    export crossvalidate
-    include("combination/cross_validation.jl")
-
     ## Functions in development 
 
 end
