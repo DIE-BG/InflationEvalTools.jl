@@ -58,6 +58,7 @@ SimConfig
 CrossEvalConfig
 CompletePeriod
 EvalPeriod
+PeriodVector
 eval_periods
 period_tag
 GT_EVAL_B00
@@ -79,10 +80,10 @@ pargentrayinfl
 Functions for simulation evaluation and metrics.
 
 ```@docs
-evalsim
-makesim
-dict_config
-run_batch
+compute_lowlevel_sim
+compute_assessment_sim
+dict2config
+run_assessment_batch
 eval_metrics
 combination_metrics
 eval_mse_online

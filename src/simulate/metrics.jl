@@ -1,20 +1,20 @@
 """
-    eval_metrics(tray_infl, tray_infl_pob; short=false) -> Dict
+    eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false) -> Dict
 
 Function to obtain a dictionary with evaluation statistics of the
 realizations of the inflation measures in `tray_infl` using the parameter
 `tray_infl_pob`. 
 
-If `short=true`, returns a dictionary only with the mean squared error (MSE) of evaluation. Useful for performing iterative optimization in parameter search.
+If `shortmetrics=true`, returns a dictionary only with the mean squared error (MSE) of evaluation. Useful for performing iterative optimization in parameter search.
 """
-function eval_metrics(tray_infl, tray_infl_pob; short=false, prefix="")
+function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="")
     _prefix = prefix == "" ? "" : prefix * "_"
     T = size(tray_infl, 1)
     K = size(tray_infl, 3)
     
     # MSE 
     mse = _mse(tray_infl, tray_infl_pob)
-    short && return Dict(Symbol(_prefix, "mse") => mse) # only MSE if short=true
+    shortmetrics && return Dict(Symbol(_prefix, "mse") => mse) # only MSE if shortmetrics=true
     
     # Error distributions 
     err_dist = tray_infl .- tray_infl_pob

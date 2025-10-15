@@ -77,7 +77,7 @@ module InflationEvalTools
 
     # Types for simulation configuration
     export AbstractConfig, SimConfig, CrossEvalConfig
-    export CompletePeriod, EvalPeriod, eval_periods, period_tag
+    export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
     export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
     include("config/EvalPeriod.jl")
     include("config/SimConfig.jl")
@@ -88,7 +88,8 @@ module InflationEvalTools
     include("simulate/pargentrayinfl.jl") 
     
     ## Functions for evaluation and metrics   
-    export evalsim, makesim, dict_config, run_batch
+    export dict2config
+    export compute_lowlevel_sim, compute_assessment_sim, run_assessment_batch
     export eval_metrics, combination_metrics
     export eval_mse_online # Online MSE evaluation function
     export eval_absme_online # Online ABSME evaluation function

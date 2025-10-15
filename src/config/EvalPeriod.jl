@@ -6,7 +6,7 @@ Abstract type to represent types of evaluation periods.
 
 See also: [`EvalPeriod`](@ref), [`CompletePeriod`](@ref).
 """
-abstract type AbstractEvalPeriod end 
+abstract type AbstractEvalPeriod end
 
 """
     EvalPeriod <: AbstractEvalPeriod
@@ -26,9 +26,9 @@ b2010:Jan-11-Dec-19
 See also: [`GT_EVAL_B00`](@ref), [`GT_EVAL_B10`](@ref), [`GT_EVAL_T0010`](@ref)
 """
 struct EvalPeriod <: AbstractEvalPeriod
-    startdate::Date 
-    finaldate::Date 
-    tag::String 
+    startdate::Date
+    finaldate::Date
+    tag::String
 end
 
 """
@@ -71,11 +71,11 @@ function eval_periods end
 # inflation periods of a CountryStructure
 function eval_periods(cs::CountryStructure, period::EvalPeriod)
     dates = infl_dates(cs)
-    period.startdate .<= dates .<= period.finaldate
+    return period.startdate .<= dates .<= period.finaldate
 end
 
 function eval_periods(cs::CountryStructure, ::CompletePeriod)
-    1:infl_periods(cs)
+    return 1:infl_periods(cs)
 end
 
 # Label for results
@@ -88,10 +88,10 @@ complete evaluation period has an empty label (`""`).
 See also: [`EvalPeriod`](@ref), [`CompletePeriod`](@ref), [`eval_periods`](@ref).
 """
 period_tag(period::EvalPeriod) = period.tag
-period_tag(::CompletePeriod) = "" 
+period_tag(::CompletePeriod) = ""
 
 # Extend Base.string to print period
-Base.show(io::IO, ::CompletePeriod) = print(io, "Complete period")
+Base.show(io::IO, ::CompletePeriod) = print(io, "full:Complete period")
 Base.show(io::IO, p::EvalPeriod) = print(io, p.tag * ":" * Dates.format(p.startdate, DEFAULT_DATE_FORMAT) * "-" * Dates.format(p.finaldate, DEFAULT_DATE_FORMAT))
 
 # Definition of default periods for evaluation of Guatemala data
@@ -114,7 +114,6 @@ Default period for evaluation in the transition from the 2000s to the 2010s.
 const GT_EVAL_T0010 = EvalPeriod(Date(2011, 1), Date(2011, 11), "gt_t0010")
 
 
-
 ## Iteration over periods
 
 # These methods are defined for functions involving CrossEvalConfig with a
@@ -128,15 +127,33 @@ Base.iterate(::EvalPeriod, ::Nothing) = nothing
 ##########################################################################################
 ### CHANGES 15/11/2023 by DJGM
 
+"""
+    PeriodVector <: AbstractEvalPeriod
+
+Type to represent a collection of evaluation periods, each given by a tuple of
+start and end dates. The `tag` field is used to label the set of periods for
+identification in results.
+
+## Example
+
+Create a `PeriodVector` with two evaluation periods and a tag:
+
+```julia-repl
+julia> pv = PeriodVector([(Date(2011,1), Date(2012,12)), (Date(2015,1), Date(2016,12))], "multi")
+PeriodVector([(2011-01-01, 2012-12-31), (2015-01-01, 2016-12-31)], "multi")
+```
+
+See also: [`EvalPeriod`](@ref), [`eval_periods`](@ref)
+"""
 struct PeriodVector <: AbstractEvalPeriod
-    V::Vector{Tuple{Date,Date}}  
-    tag::String 
+    periods::Vector{Tuple{Date, Date}}
+    tag::String
 end
 
 
-function eval_periods(cs::CountryStructure, v::PeriodVector)
+function eval_periods(cs::CountryStructure, pv::PeriodVector)
     dates = infl_dates(cs)
-    .|([period[1] .<= dates .<= period[2] for period in v.V]...)
+    return .|([period[1] .<= dates .<= period[2] for period in pv.periods]...)
 end
 
 period_tag(period::PeriodVector) = period.tag

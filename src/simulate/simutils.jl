@@ -2,229 +2,199 @@
 
 # This function can evaluate only one inflation measure
 """
-    evalsim(data::CountryStructure, config::SimConfig; 
-        rndseed = DEFAULT_SEED, 
-        short = false) -> (Dict, Array{<:AbstractFloat, 3})
+    compute_lowlevel_sim(data::CountryStructure, config::SimConfig;
+            rndseed = DEFAULT_SEED,
+            shortmetrics = false,
+            showprogress = false) -> (Dict, Array{<:AbstractFloat, 3})
 
-This function generates the parametric trajectory, simulation trajectories,
-and evaluation metrics using the [`SimConfig`](@ref) configuration.
-Returns `(metrics, tray_infl)`.
+Generate the parametric (population) trajectory, simulated inflation
+trajectories and evaluation metrics using a [`SimConfig`](@ref).
 
-The evaluation metrics are returned in the `metrics` dictionary. If
-`short=true`, the dictionary contains only the `:mse` key. This short
-dictionary is useful for iterative optimization. By default, the complete
-metrics dictionary is computed, but this process is more memory intensive.
-See also [`eval_metrics`](@ref).
+Returns a tuple `(metrics, tray_infl)` where `metrics` is a dictionary of
+evaluation measures and `tray_infl` is a 3‑D array with dimensions
+`(T, 1, K)` (T = time steps, K = number of bootstrap realizations).
 
-The simulated inflation trajectories are returned in `tray_infl` as a
-three-dimensional array of size `(T, 1, K)`, where `T` corresponds to the
-computed inflation periods and `K` represents the number of simulation
-realizations. The unitary dimension `1` is used to later concatenate the
-simulation results, for example, when computing an optimal weighted average
-measure.
+Arguments
+- `data::CountryStructure`: country dataset container used for resampling and
+    trend estimation.
+- `config::SimConfig`: configuration with `inflfn`, `resamplefn`, `trendfn`,
+    `paramfn`, `nsim` and evaluation periods.
 
-## Usage
+Keyword arguments
+- `rndseed`: integer seed for the random generator (default = `DEFAULT_SEED`).
+- `shortmetrics`: when true compute a reduced set of metrics (faster / lower
+    memory footprint). Default `false`.
+- `showprogress`: show progress bar during simulation generation (default
+    `false`).
 
-The `evalsim` function receives a `CountryStructure` and an `AbstractConfig`
-of type [`SimConfig`](@ref).
-
-### Example
-
-Given a configuration of type `SimConfig` and a dataset
-`gtdata_eval`
-
-```
-julia> config = SimConfig(
-        InflationPercentileEq(69),
-        ResampleScrambleVarMonths(),
-        TrendRandomWalk(),
-        InflationTotalRebaseCPI(36, 2), 10_000, Date(2019,12))
-SimConfig{InflationPercentileEq, ResampleScrambleVarMonths, TrendRandomWalk{Float32}}
-|─> Inflation function              : Equiponderated percentile 69.0
-|─> Resampling function             : Bootstrap IID by month of occurrence
-|─> Trend function                  : Random walk trend
-|─> Parametric inflation method     : Year-on-year CPI variation with synthetic base changes (36, 2)
-|─> Number of simulations           : 10000
-|─> End of training set             : Dec-19
-|─> Evaluation periods              : Full period, gt_b00:Dec-01-Dec-10, gt_t0010:Jan-11-Nov-11 and gt_b10:Dec-11-Dec-20
-```
-
-we can run a simulation with the parameters in `config` with:
-
-```julia-repl
-julia> results, tray_infl = evalsim(gtdata, config)
-┌ Info: Inflation measure evaluation
-│   measure = "Equiponderated percentile 69.0"
-│   resampling = "Bootstrap IID by month of occurrence"
-│   trend = "Random walk trend"
-│   evaluation = "Year-on-year CPI variation with synthetic base changes (36, 2)"
-│   simulations = 10000
-│   traindate = 2019-12-01
-└   periods = (Full period, gt_b00:Dec-01-Dec-10, gt_t0010:Jan-11-Nov-11, gt_b10:Dec-11-Dec-20)
-... (progress bar)
-┌ Info: Evaluation metrics:
-│   mse = ...
-└   ... (other metrics)
-```
+See also [`eval_metrics`](@ref) for details on the metric names stored in
+`metrics`.
 """
-function evalsim(data::CountryStructure, config::SimConfig; 
-    rndseed = DEFAULT_SEED, 
-    short = false)
-  
+function compute_lowlevel_sim(
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        shortmetrics = false,
+        showprogress = false,
+    )
+
     # Get data up to the configuration date
     data_eval = data[config.traindate]
 
-    # Get the parametric inflation trajectory
+    # Get the population trend inflation trajectory
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
     tray_infl_pob = param(data_eval)
 
-    @info "Inflation measure evaluation" medida=measure_name(config.inflfn) remuestreo=method_name(config.resamplefn) tendencia=method_name(config.trendfn) evaluación=measure_name(config.paramfn) simulaciones=config.nsim traindate=config.traindate periodos=config.evalperiods
+    @info "B-TIMA assessment simulation" measure = measure_name(config.inflfn) resample = method_name(config.resamplefn) trend = method_name(config.trendfn) assessment = measure_name(config.paramfn) simulations = config.nsim traindate = config.traindate periods = config.evalperiods
 
     # Generate the simulated inflation trajectories
-    tray_infl = pargentrayinfl(config.inflfn, # inflation function
+    tray_infl = Distributed.@sync pargentrayinfl(
+        config.inflfn, # inflation function
         config.resamplefn, # resampling function
         config.trendfn, # trend function
-        data_eval, # evaluation data
-        rndseed = rndseed, K=config.nsim)
-    println()
+        data_eval; # evaluation data
+        rndseed,
+        K = config.nsim,
+        showprogress,
+    )
 
     # Evaluation metrics in each subperiod of config
-    metrics = mapreduce(merge, config.evalperiods) do period 
+    metrics = mapreduce(merge, config.evalperiods) do period
         mask = eval_periods(data_eval, period)
         prefix = period_tag(period)
-        metrics = @views eval_metrics(tray_infl[mask, :, :], tray_infl_pob[mask]; short, prefix)
-        metrics 
-    end 
-    # Filter metrics that start with gt_. The metrics for CompletePeriod()
-    # do not contain a prefix and are shown by default.
-    @info "Evaluation metrics:" filter(t -> !contains(string(t), "gt_"), metrics)...
+        metrics = @views eval_metrics(tray_infl[mask, :, :], tray_infl_pob[mask]; shortmetrics, prefix)
+        metrics
+    end
+    # Show the main assessment metrics by default, the RMSE
+    @info "Assessment metrics:" filter(t -> contains(string(t), "rmse"), metrics)...
 
     # Return these values
-    metrics, tray_infl
+    return metrics, tray_infl
 end
 
-# Function to obtain results dictionary and trajectories from an
-# AbstractConfig
+# Function to obtain results dictionary and trajectories from a
+# `SimConfig` (and to package metadata + metrics for storage)
 """
-    makesim(data, config::AbstractConfig; 
-        rndseed = DEFAULT_SEED
-        short = false) -> (Dict, Array{<:AbstractFloat, 3})
+        compute_assessment_sim(data::CountryStructure, config::SimConfig;
+                        rndseed = DEFAULT_SEED,
+                        savetrajectories = false,
+                        shortmetrics = false,
+                        showprogress = false) -> Dict
 
-## Usage
-This function uses the `evalsim` function to generate a set of simulations
-based on a `CountryStructure` and an `AbstractConfig`, and generates a
-`results` dictionary with all the evaluation metrics and with the information
-of the `AbstractConfig` used to generate them. Additionally, it generates an
-object with the inflation trajectories. Returns `(metrics, tray_infl)`.
+Run the low‑level simulation (`compute_lowlevel_sim`), collect evaluation
+metrics and return a results dictionary that merges the `SimConfig`
+parameters with the computed metrics.
 
-### Examples
-`makesim` receives a `CountryStructure` and an `AbstractConfig`, passes it to
-`evalsim` and generates the simulations. It stores the metrics and simulation
-parameters in the results dictionary, and also returns the simulation
-trajectory.
+Returns a dictionary `results` that always contains the metrics and config
+fields. If `savetrajectories=true` the returned dictionary includes the key
+`:trajinfl` containing the simulated trajectories array.
 
-```julia-repl 
-julia> results, tray_infl = makesim(gtdata, config)
-┌ Info: Inflation measure evaluation
-│   measure = "Equiponderated percentile 69.0"
-│   resampling = "Bootstrap IID by month of occurrence"
-│   trend = "Random walk trend"
-│   evaluation = "Year-on-year CPI variation with synthetic base changes (36, 2)"
-│   simulations = 10000
-│   traindate = 2019-12-01
-└   periods = (Full period, gt_b00:Dec-01-Dec-10, gt_t0010:Jan-11-Nov-11, gt_b10:Dec-11-Dec-20)
-... (progress bar)
-┌ Info: Evaluation metrics:
-│   mse = ...
-└   ... (other metrics)
+Keyword arguments
+- `savetrajectories`: when true add trajectories to the results dictionary
+    (in the key `:trajinfl`). Default `false`.
+- `shortmetrics`: compute a reduced metrics set when true (default `false`).
+- `showprogress`: show progress during trajectory generation (default
+    `false`).
+
+Example
+
+```julia-repl
+julia> results = compute_assessment_sim(gtdata, config)
 ```
 """
-function makesim(data::CountryStructure, config::SimConfig; 
-    rndseed = DEFAULT_SEED, 
-    short = false)
-        
-     # Run the simulation and get the results
-    metrics, tray_infl = evalsim(data, config; rndseed, short)
+function compute_assessment_sim(
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = false,
+        showprogress = false,
+    )
+
+    # Run the simulation and get the results
+    metrics, trajinfl = compute_lowlevel_sim(
+        data, config;
+        rndseed,
+        shortmetrics,
+        showprogress,
+    )
 
     # Add results to dictionary
     results = merge(struct2dict(config), metrics)
     results[:measure] = CPIDataBase.measure_name(config.inflfn)
     results[:params] = CPIDataBase.params(config.inflfn)
+    savetrajectories && (results[:trajinfl] = trajinfl)
 
-    return results, tray_infl 
+    # Return dictionary with results
+    return results
 end
 
 
 # Function to run a batch of simulations
 """
-    run_batch(data, dict_list_params, savepath; 
-        savetrajectories = true, 
-        rndseed = DEFAULT_SEED)
+        run_assessment_batch(data::CountryStructure, dict_list_params, savepath::AbstractString;
+                rndseed = DEFAULT_SEED,
+                savetrajectories = false,
+                shortmetrics = false,
+                showprogress = true)
 
-The `run_batch` function generates simulation batches based on the
-configuration parameter dictionary.
+Generate a batch of simulation assessments from a list (or iterable) of
+parameter dictionaries. Each element in `dict_list_params` is converted to a
+`SimConfig` with `dict2config` and evaluated with
+`compute_assessment_sim`. Results are saved to `savepath` using
+`DrWatson.savename` so they can later be read by `collect_results`.
 
-## Usage
-The function receives a `CountryStructure`, a dictionary with vectors that
-contain simulation parameters, and a directory to store files with the
-metrics of each of the generated evaluations.
+Arguments
+- `dict_list_params`: iterable of parameter dictionaries (usually created by
+    expanding vectors of parameter values).
+- `savepath`: directory where per‑run result files will be written.
 
-### Example
-We generate a dictionary with configuration parameters for equiponderated
-percentiles, from percentile 60 to percentile 80. This generates a
-dictionary with 21 different configurations for evaluation.
+Keyword arguments
+- `savetrajectories`: save trajectories within each result file (default
+    `false`).
+- `shortmetrics`: compute reduced metrics when true (default `false`).
+- `showprogress`: show progress indicator during generation (default
+    `true`).
 
-```julia-repl 
-config_dict = Dict(
-    :inflfn => InflationPercentileWeighted.(50:80), 
-    :resamplefn => resamplefn, 
-    :trendfn => trendfn,
-    :paramfn => paramfn, 
-    :traindate => Date(2019, 12),
-    :nsim => 1000) |> dict_list`
-``` 
+Example
 
-Once `config_dict` is created, we can generate the simulation batch using
-`run_batch`.
+```julia-repl
+julia> config_dict = Dict(
+        :inflfn => InflationPercentileWeighted.(50:80),
+        :resamplefn => resamplefn,
+        :trendfn => trendfn,
+        :paramfn => paramfn,
+        :traindate => Date(2019, 12),
+        :nsim => 1000) |> dict_list
 
-```julia-repl 
-julia> run_batch(gtdata_eval, config_dict, savepath)
-... (evaluation progress)
+run_assessment_batch(gtdata_eval, config_dict, savepath)
 ```
 
-Once all simulations have been generated, we can obtain the data using the
-`collect_results` function. This function reads the results from `savepath`
-and presents them in a `DataFrame`.
-
-```julia-repl 
-julia> df = collect_results(savepath)
-[ Info: Scanning folder `<savepath>` for result files.
-[ Info: Added 31 entries.
-...
-```
+After the batch completes, use `collect_results(savepath)` to assemble a
+`DataFrame` with the stored metrics.
 """
-function run_batch(data, dict_list_params, savepath; 
-    savetrajectories = true, 
-    rndseed = DEFAULT_SEED)
+function run_assessment_batch(
+        data::CountryStructure, dict_list_params, savepath::AbstractString;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = false,
+        showprogress = true,
+    )
 
     # Run batch of simulations
     for (i, dict_params) in enumerate(dict_list_params)
         @info "Running simulation $i of $(length(dict_list_params))..."
-        config = dict_config(dict_params)
-        results, tray_infl = makesim(data, config;
-            rndseed = rndseed)
-        print("\n\n\n") 
-        
+        config = dict2config(dict_params)
+        results = compute_assessment_sim(
+            data, config;
+            rndseed,
+            shortmetrics,
+            savetrajectories,
+            showprogress
+        )
+
         # Save the results
-        filename = savename(config, "jld2")
-        
-        # Evaluation results for collect_results
+        # Rsults intended for DrWatson.collect_results
+        filename = DrWatson.savename(config, "jld2")
         wsave(joinpath(savepath, filename), tostringdict(results))
-        
-        # Save inflation trajectories, tray_infl directory in the save path
-        savetrajectories && wsave(joinpath(savepath, "tray_infl", filename), "tray_infl", tray_infl)
     end
-
+    return
 end
-
-
