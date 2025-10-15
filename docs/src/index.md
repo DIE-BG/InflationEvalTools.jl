@@ -58,6 +58,7 @@ SimConfig
 CrossEvalConfig
 CompletePeriod
 EvalPeriod
+PeriodVector
 eval_periods
 period_tag
 GT_EVAL_B00

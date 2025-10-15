@@ -77,7 +77,7 @@ module InflationEvalTools
 
     # Types for simulation configuration
     export AbstractConfig, SimConfig, CrossEvalConfig
-    export CompletePeriod, EvalPeriod, eval_periods, period_tag
+    export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
     export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
     include("config/EvalPeriod.jl")
     include("config/SimConfig.jl")
