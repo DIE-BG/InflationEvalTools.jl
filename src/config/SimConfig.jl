@@ -1,28 +1,26 @@
-# SimConfig.jl - Definición de tipos contenedores para parámetros de simulación
+# SimConfig.jl - Definition of container types for simulation parameters
 
 """
     abstract type AbstractConfig{F <: InflationFunction, R <:ResampleFunction, T <:TrendFunction} end
 
-`AbstractConfig` es un tipo abstracto para representar variantes de simulación que utilizan, en
-general, una función de inflación `InflationFunction`, una función de
-remuestreo `ResampleFunction` y una función de Tendencia
-`TrendFunction`. Contiene el esquema general de la simulación.
+`AbstractConfig` is an abstract type to represent simulation variants that generally use an
+inflation function `InflationFunction`, a resampling function `ResampleFunction`, and a
+trend function `TrendFunction`. It contains the general scheme of the simulation.
 """
 abstract type AbstractConfig{F <: InflationFunction, R <:ResampleFunction, T <:TrendFunction} end
 
 """
     SimConfig{F, R, T} <:AbstractConfig{F, R, T}
 
-Tipo concreto que contiene una configuración base para generar simulaciones
-utilizando todos los datos como set de entrenamiento. Recibe una función de
-inflación `InflationFunction`, una función de remuestreo
-`ResampleFunction`, una función de Tendencia `TrendFunction`, 
-una función de inflación de evaluación [`paramfn`] y la cantidad de simulaciones 
-deseadas [`nsim`].
+Concrete type that contains a base configuration to generate simulations
+using all data as the training set. Receives an inflation function
+`InflationFunction`, a resampling function `ResampleFunction`, a trend
+function `TrendFunction`, an evaluation inflation function [`paramfn`], and
+the desired number of simulations [`nsim`].
 
-## Ejemplo
-Considerando las siguientes instancias de funciones de inflación, remuestreo,
-tendencia e inflación de evaluación:
+## Example
+Considering the following instances of inflation, resampling, trend, and
+evaluation inflation functions:
 
 ```
 julia> percEq = InflationPercentileEq(80);
@@ -34,60 +32,60 @@ julia> trendfn = TrendRandomWalk();
 julia> paramfn = InflationWeightedMean();
 ```
 
-Generamos una configuración del tipo `SimConfig` con 1000 simulaciones, con períodos de evaluación por defecto:
+We generate a `SimConfig` configuration with 1000 simulations, with default evaluation periods:
 - `CompletePeriod()`, 
 - `GT_EVAL_B00`, 
-- `GT_EVAL_T0010` y  
+- `GT_EVAL_T0010` and  
 - `GT_EVAL_B10`
 
 ```
 julia> config = SimConfig(percEq, resamplefn, trendfn, paramfn, 1000, Date(2019,12))
 SimConfig{InflationPercentileEq, ResampleSBB, TrendRandomWalk{Float32}}
-|─> Función de inflación            : Percentil equiponderado 80.0
-|─> Función de remuestreo           : Block bootstrap estacionario con bloque esperado 36
-|─> Función de tendencia            : Tendencia de caminata aleatoria
-|─> Método de inflación paramétrica : Media ponderada interanual
-|─> Número de simulaciones          : 1000
-|─> Fin set de entrenamiento        : Dec-19
-|─> Períodos de evaluación          : Período completo, gt_b00:Dec-01-Dec-10, gt_t0010:Jan-11-Nov-11 y gt_b10:Dec-11-Dec-20
+|─> Inflation function            : Percentil equiponderado 80.0
+|─> Resampling function           : Block bootstrap estacionario con bloque esperado 36
+|─> Trend function                : Tendencia de caminata aleatoria
+|─> Parametric inflation method   : Media ponderada interanual
+|─> Number of simulations         : 1000
+|─> End of training set           : Dec-19
+|─> Evaluation periods            : Complete period, gt_b00:Dec-01-Dec-10, gt_t0010:Jan-11-Nov-11 y gt_b10:Dec-11-Dec-20
 ```
 
-Para generar una configuración con períodos específicos podemos brindar la colección de períodos de interés:
+To generate a configuration with specific periods, you can provide the collection of periods of interest:
 
 ```
 julia> config2 = SimConfig(percEq, resamplefn, trendfn, paramfn, 1000, Date(2019,12),
        (CompletePeriod(), EvalPeriod(Date(2008,1), Date(2009,12), "fincrisis")))
 SimConfig{InflationPercentileEq, ResampleSBB, TrendRandomWalk{Float32}}
-|─> Función de inflación            : Percentil equiponderado 80.0
-|─> Función de remuestreo           : Block bootstrap estacionario con bloque esperado 36
-|─> Función de tendencia            : Tendencia de caminata aleatoria
-|─> Método de inflación paramétrica : Media ponderada interanual
-|─> Número de simulaciones          : 1000
-|─> Fin set de entrenamiento        : Dec-19
-|─> Períodos de evaluación          : Período completo y fincrisis:Jan-08-Dec-09
+|─> Inflation function            : Percentil equiponderado 80.0
+|─> Resampling function           : Block bootstrap estacionario con bloque esperado 36
+|─> Trend function                : Tendencia de caminata aleatoria
+|─> Parametric inflation method   : Media ponderada interanual
+|─> Number of simulations         : 1000
+|─> End of training set           : Dec-19
+|─> Evaluation periods            : Complete period y fincrisis:Jan-08-Dec-09
 ```
 """
 Base.@kwdef struct SimConfig{F, R, T} <:AbstractConfig{F, R, T}
-    # Función de Inflación
+    # Inflation function
     inflfn::F
-    # Función de remuestreo
+    # Resampling function
     resamplefn::R
-    # Función de Tendencia
+    # Trend function
     trendfn::T
-    # Función de inflación paramétrica 
+    # Parametric inflation function 
     paramfn::InflationFunction
-    # Cantidad de Simulaciones
+    # Number of simulations
     nsim::Int  
-    # Fecha final de evaluación 
+    # Final evaluation date 
     traindate::Date
-    # Colección de período(s) de evaluación, por defecto el período completo 
+    # Collection of evaluation period(s), by default the complete period 
     evalperiods = (CompletePeriod(),)
 end
 
-# Constructor con períodos de evaluación por defecto para Guatemala 
+# Constructor with default evaluation periods for Guatemala
 SimConfig(inflfn, resamplefn, trendfn, paramfn, nsim, traindate) = 
     SimConfig(inflfn, resamplefn, trendfn, paramfn, nsim, traindate, 
-    # Configuración de períodos por defecto 
+    # Default period configuration
     (CompletePeriod(), GT_EVAL_B00, GT_EVAL_T0010, GT_EVAL_B10))
     
 
@@ -97,24 +95,22 @@ SimConfig(inflfn, resamplefn, trendfn, paramfn, nsim, traindate) =
     CrossEvalConfig{F, R, T} <:AbstractConfig{F, R, T}
     CrossEvalConfig(ensemblefn, resamplefn, trendfn, paramfn, nsim, evalperiods)
 
-`CrossEvalConfig` es un tipo concreto que contiene la configuración base para
-generar simulaciones utilizando un conjunto de funciones de inflación a
-combinarse. 
+`CrossEvalConfig` is a concrete type that contains the base configuration to
+generate simulations using a set of inflation functions to be combined.
 
-Recibe una
-- función de inflación de conjunto `EnsembleFunction`, 
-- una función de remuestreo `ResampleFunction`, 
-- una función de Tendencia `TrendFunction`, 
-- la cantidad de simulaciones a realizar `nsim`, 
-- un período (o conjunto de períodos) de evaluación [`EvalPeriod`](@ref) para en
-  los cuales se obtendrán métricas de evaluación de validación cruzada. El
-  período de entrenamiento se considera desde el inicio de la muestra hasta el
-  período anterior a cada período de evaluación dado.
+It receives a
+- ensemble inflation function `EnsembleFunction`, 
+- a resampling function `ResampleFunction`, 
+- a trend function `TrendFunction`, 
+- the number of simulations to perform `nsim`, 
+- a period (or set of periods) of evaluation [`EvalPeriod`](@ref) in
+  which evaluation metrics for cross-validation will be obtained. The
+  training period is considered from the start of the sample up to the
+  period prior to each given evaluation period.
 
-## Ejemplo
+## Example
 
-Considerando un conjunto de funciones de inflación, remuestreo, tendencia e
-inflación paramétrica: 
+Considering a set of inflation, resampling, trend, and parametric inflation functions: 
 
 ```
 julia> ensemblefn = EnsembleFunction(InflationPercentileEq(72), InflationPercentileWeighted(68));
@@ -126,67 +122,67 @@ julia> trendfn = TrendRandomWalk();
 julia> paramfn = InflationTotalRebaseCPI(60); 
 ```
 
-Generamos una configuración del tipo `CrossEvalConfig` con 10000 simulaciones,
-configurando dos períodos de evaluación para los métodos de validación cruzada. 
+We generate a `CrossEvalConfig` configuration with 10000 simulations,
+configuring two evaluation periods for the cross-validation methods.
 
 ```
 julia> config = CrossEvalConfig(ensemblefn, resamplefn, trendfn, paramfn, 10000, 
        (EvalPeriod(Date(2016, 1), Date(2017, 12), "cv1617"), 
        EvalPeriod(Date(2017, 1), Date(2018, 12), "cv1718")))
 CrossEvalConfig{InflationTotalRebaseCPI, ResampleSBB, TrendRandomWalk{Float32}}
-|─> Función de inflación            : ["Percentil equiponderado 72.0", "Percentil ponderado 68.0"]
-|─> Función de remuestreo           : Block bootstrap estacionario con bloque esperado 36
-|─> Función de tendencia            : Tendencia de caminata aleatoria
-|─> Método de inflación paramétrica : Variación interanual IPC con cambios de base sintéticos (60, 0)
-|─> Número de simulaciones          : 10000
-|─> Períodos de evaluación          : cv1617:Jan-16-Dec-17 y cv1718:Jan-17-Dec-18
+|─> Inflation function            : ["Percentil equiponderado 72.0", "Percentil ponderado 68.0"]
+|─> Resampling function           : Block bootstrap estacionario con bloque esperado 36
+|─> Trend function                : Tendencia de caminata aleatoria
+|─> Parametric inflation method   : Variación interanual IPC con cambios de base sintéticos (60, 0)
+|─> Number of simulations         : 10000
+|─> Evaluation periods            : cv1617:Jan-16-Dec-17 y cv1718:Jan-17-Dec-18
 ```
 """
 Base.@kwdef struct CrossEvalConfig{F, R, T} <:AbstractConfig{F, R, T}
-    # Conjunto de funciones de inflación para obtener trayectorias a combinar 
+    # Set of inflation functions to obtain trajectories to combine 
     inflfn::EnsembleFunction
-    # Función de remuestreo
+    # Resampling function
     resamplefn::R
-    # Función de Tendencia
+    # Trend function
     trendfn::T
-    # Función de inflación paramétrica 
+    # Parametric inflation function 
     paramfn::F
-    # Cantidad de simulaciones a realizar 
+    # Number of simulations to perform 
     nsim::Int
-    # Colección de período(s) de evaluación, por defecto el período completo 
+    # Collection of evaluation period(s), by default the complete period 
     evalperiods::Union{EvalPeriod, Vector{EvalPeriod}, NTuple{N, EvalPeriod} where N}
 end
 
-# Configuraciones para mostrar nombres de funciones en savename
+# Configurations to show function names in savename
 Base.string(inflfn::InflationFunction) = measure_tag(inflfn)
 Base.string(resamplefn::ResampleFunction) = method_tag(resamplefn)
 Base.string(trendfn::TrendFunction) = method_tag(trendfn)
 
-# Método para mostrar información de la configuración en el REPL
+# Method to show configuration information in the REPL
 function Base.show(io::IO, config::AbstractConfig)
     println(io, typeof(config))
-    println(io, "|─> Función de inflación            : ", measure_name(config.inflfn))
-    println(io, "|─> Función de remuestreo           : ", method_name(config.resamplefn))
-    println(io, "|─> Función de tendencia            : ", method_name(config.trendfn))
-    println(io, "|─> Método de inflación paramétrica : ", measure_name(config.paramfn))
-    println(io, "|─> Número de simulaciones          : ", config.nsim)
+    println(io, "|─> Inflation function            : ", measure_name(config.inflfn))
+    println(io, "|─> Resampling function           : ", method_name(config.resamplefn))
+    println(io, "|─> Trend function                : ", method_name(config.trendfn))
+    println(io, "|─> Parametric inflation method   : ", measure_name(config.paramfn))
+    println(io, "|─> Number of simulations         : ", config.nsim)
     if hasproperty(config, :traindate)
-        println(io, "|─> Fin set de entrenamiento        : ", Dates.format(config.traindate, DEFAULT_DATE_FORMAT))
+        println(io, "|─> End of training set           : ", Dates.format(config.traindate, DEFAULT_DATE_FORMAT))
     end
-    println(io, "|─> Períodos de evaluación          : ", join(config.evalperiods, ", ", " y "))
+    println(io, "|─> Evaluation periods            : ", join(config.evalperiods, ", ", " y "))
 end
 
 
-# Extensión de tipos permitidos para simulación en DrWatson
+# Extension of allowed types for simulation in DrWatson
 DrWatson.default_allowed(::AbstractConfig) = (String, Symbol, TimeType, Function, Real) 
 
-# Definición de formato para guardado de archivos relacionados con la configuración
+# Definition of format for saving files related to the configuration
 DEFAULT_CONNECTOR = ", "
 DEFAULT_EQUALS = "="
 DEFAULT_DATE_FORMAT = DateFormat("u-yy")
 COMPACT_DATE_FORMAT = DateFormat("uyy")
 
-# Extensión de savename para SimConfig
+# Extension of savename for SimConfig
 DrWatson.savename(config::SimConfig, suffix::String = "jld2"; kwargs...) = 
     savename(DrWatson.default_prefix(config), config, suffix; kwargs...)
 
@@ -195,16 +191,16 @@ function DrWatson.savename(prefix::String, config::SimConfig, suffix::String; kw
     _suffix = suffix != "" ? "." * suffix : ""
 
     _prefix * join([ 
-        measure_tag(config.inflfn), # Función de inflación 
-        method_tag(config.resamplefn), # Función de remuestreo 
-        method_tag(config.trendfn), # Función de tendencia
-        measure_tag(config.paramfn), # Función de inflación paramétrica de evaluación
-        config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Número de simulaciones, 
+        measure_tag(config.inflfn), # Inflation function 
+        method_tag(config.resamplefn), # Resampling function 
+        method_tag(config.trendfn), # Trend function
+        measure_tag(config.paramfn), # Parametric inflation function for evaluation
+        config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Number of simulations
         Dates.format(config.traindate, COMPACT_DATE_FORMAT)
     ], DEFAULT_CONNECTOR) * _suffix 
 end
 
-# Extensión de savename para CrossEvalConfig
+# Extension of savename for CrossEvalConfig
 DrWatson.savename(config::CrossEvalConfig, suffix::String = "jld2"; kwargs...) = 
     savename(DrWatson.default_prefix(config), config, suffix; kwargs...)
 
@@ -217,30 +213,30 @@ function DrWatson.savename(prefix::String, config::CrossEvalConfig, suffix::Stri
     finaldate = maximum(map(p -> p.finaldate, config.evalperiods))
 
     _prefix * join([
-        # Función de inflación de conjunto denotada por CrossEvalConfig
+        # Ensemble inflation function denoted by CrossEvalConfig
         "CrossEvalConfig($num_infl_functions, $num_eval_periods)", 
-        method_tag(config.resamplefn), # Función de remuestreo 
-        method_tag(config.trendfn), # Función de tendencia
-        measure_tag(config.paramfn), # Función de inflación paramétrica de evaluación
-        config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Número de simulaciones, 
+        method_tag(config.resamplefn), # Resampling function 
+        method_tag(config.trendfn), # Trend function
+        measure_tag(config.paramfn), # Parametric inflation function for evaluation
+        config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Number of simulations
         Dates.format(startdate, COMPACT_DATE_FORMAT) * "-" * Dates.format(finaldate, COMPACT_DATE_FORMAT)
     ], DEFAULT_CONNECTOR) * _suffix
 end
 
 
-# Funciones de ayuda 
+# Helper functions
 
 
-## Método para convertir de AbstractConfig a Diccionario 
-# Esto lo hace la función struct2dict() de DrWatson
+## Method to convert from AbstractConfig to Dictionary
+# This is done by the struct2dict() function from DrWatson
 
 """
     dict_config(params::Dict)
 
-Función para convertir diccionario de parámetros a `SimConfig` o `CrossEvalConfig`.
+Function to convert a parameter dictionary to `SimConfig` or `CrossEvalConfig`.
 """
 function dict_config(params::Dict)
-    # CrossEvalConfig contiene el campo de períodos de evaluación 
+    # CrossEvalConfig contains the field of evaluation periods 
     if (:traindate in keys(params))
         if (:evalperiods in keys(params))
             config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate], params[:evalperiods])
@@ -253,6 +249,6 @@ function dict_config(params::Dict)
     config 
 end
 
-# Método opcional para lista de configuraciones
+# Optional method for list of configurations
 dict_config(params::AbstractVector) = dict_config.(params)
 

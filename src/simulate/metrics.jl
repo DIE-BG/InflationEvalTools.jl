@@ -1,11 +1,11 @@
 """
     eval_metrics(tray_infl, tray_infl_pob; short=false) -> Dict
 
-Función para obtener un diccionario con estadísticos de evaluación de las
-realizaciones de las medidas de inflación en `tray_infl` utilizando el parámetro
+Function to obtain a dictionary with evaluation statistics of the
+realizations of the inflation measures in `tray_infl` using the parameter
 `tray_infl_pob`. 
 
-Si `short=true`, devuelve un diccionario únicamente con el error cuadrático medio (MSE) de evaluación. Útil para realizar optimización iterativa en la búsqueda de parámetros. 
+If `short=true`, returns a dictionary only with the mean squared error (MSE) of evaluation. Useful for performing iterative optimization in parameter search.
 """
 function eval_metrics(tray_infl, tray_infl_pob; short=false, prefix="")
     _prefix = prefix == "" ? "" : prefix * "_"
@@ -14,21 +14,21 @@ function eval_metrics(tray_infl, tray_infl_pob; short=false, prefix="")
     
     # MSE 
     mse = _mse(tray_infl, tray_infl_pob)
-    short && return Dict(Symbol(_prefix, "mse") => mse) # solo MSE si short=true
+    short && return Dict(Symbol(_prefix, "mse") => mse) # only MSE if short=true
     
-    # Distribuciones de error 
+    # Error distributions 
     err_dist = tray_infl .- tray_infl_pob
-    # Distribución de error cuadrático 
+    # Squared error distribution
     mse_dist = vec(mean(x -> x^2, err_dist, dims=1))
     sq_err_dist = err_dist .^ 2
-    # Desviación estándar de la distribución de MSE del período completo
+    # Standard deviation of the MSE distribution for the full period
     std_mse_dist = std(mse_dist, mean=mse) 
     
-    # Error estándar de simulación del valor promedio obtenido 
+    # Standard error of simulation of the obtained average value
     mse_std_error = std_mse_dist / sqrt(K)
     # mse_std_error = std(sq_err_dist, mean=mse) / sqrt(T * K)
     
-    # Desviación estándar del error cuadrático ~ todos los períodos y realizaciones 
+    # Standard deviation of the squared error ~ all periods and realizations
     std_sqerr_dist = std(sq_err_dist, mean=mse)
     
     # RMSE, MAE, ME
@@ -36,29 +36,29 @@ function eval_metrics(tray_infl, tray_infl_pob; short=false, prefix="")
     mae = mean(abs, err_dist)
     me = mean(err_dist)
     
-    # Pérdida de Huber ~ combina las propiedades del MSE y del MAE
+    # Huber loss ~ combines the properties of MSE and MAE
     huber = mean(huber_loss, err_dist)
 
-    # Correlación 
+    # Correlation 
     corr_dist = first.(cor.(eachslice(tray_infl, dims=3), Ref(tray_infl_pob)))
     corr = mean(corr_dist) 
 
-    ## Descomposición aditiva del MSE
+    ## Additive decomposition of the MSE
 
-    # Sesgo^2
+    # Bias^2
     me_dist = vec(mean(err_dist, dims=1))
     mse_bias = mean(x -> x^2, me_dist)
 
-    # Componente de varianza   
+    # Variance component
     s_param = std(tray_infl_pob, corrected=false)
     s_tray_infl = vec(std(tray_infl, dims=1, corrected=false))
     mse_var = mean(s -> (s - s_param)^2, s_tray_infl)
 
-    # Componente de correlación 
+    # Correlation component
     mse_cov_dist = @. 2 * (1 - corr_dist) * s_param * s_tray_infl
     mse_cov = mean(mse_cov_dist)
 
-    # Diccionario de métricas a devolver
+    # Dictionary of metrics to return
     Dict(
         Symbol(_prefix, "mse") => mse, 
         Symbol(_prefix, "mse_std_error") => mse_std_error, 
@@ -78,7 +78,7 @@ function eval_metrics(tray_infl, tray_infl_pob; short=false, prefix="")
 end
 
 
-# Pérdida de Huber 
+# Huber loss
 function huber_loss(x::Real; a=1)
     if abs(x) <= a 
         return x^2 / 2
@@ -88,23 +88,23 @@ function huber_loss(x::Real; a=1)
 end
 
 
-# Error cuadrático medio - MSE: promedio a través del tiempo y número de
-# realizaciones de los errores entre las trayectorias de inflación tray_infl y
-# la trayectoria paramétrica de inflación tray_pob
+# Mean squared error - MSE: average across time and number of
+# realizations of the errors between the inflation trajectories tray_infl and
+# the parametric inflation trajectory tray_pob
 function _mse(tray_infl, tray_infl_pob)
     mean(x -> x^2, tray_infl .- tray_infl_pob)
 end
 
 
-# Métricas para combinaciones lineales de estimadores 
+# Metrics for linear combinations of estimators 
 """
     combination_metrics(tray_infl, tray_infl_param, w; kwargs...) 
 
-Métricas para medidas de combinación lineal. Se combinan las trayectorias en
-`tray_infl` con las ponderaciones `w` y se computan las métricas de evaluación
-utilizando la trayectoria paramétrica `tray_infl_param`. 
+Metrics for linear combination measures. The trajectories in
+`tray_infl` are combined with the weights `w` and the evaluation metrics are computed
+using the parametric trajectory `tray_infl_param`. 
 
-Los argumentos opcionales (`kwargs...`) son pasados a la función
+Optional arguments (`kwargs...`) are passed to the function
 [`eval_metrics`](@ref).
 """
 function combination_metrics(tray_infl, tray_infl_param, w; kwargs...) 
