@@ -14,7 +14,7 @@ See also: [`ParamTotalCPIRebase`](@ref), [`ParamTotalCPI`](@ref), [`ParamWeighte
 """
 Base.@kwdef struct InflationParameter{F, R, T} <: AbstractInflationParameter{F, R, T}
     inflfn::F = InflationTotalRebaseCPI()
-    resamplefn::R = ResampleSBB(36)
+    resamplefn::R = ResampleScrambleVarMonths()
     trendfn::T = TrendRandomWalk()
 end
 
@@ -48,7 +48,7 @@ method_tag(param::InflationParameter) = string("InflParam: [",nameof(param.inflf
 
 Defines the default resampling function to use in the simulation exercise.
 """
-const DEFAULT_RESAMPLE_FN = ResampleSBB(36)
+const DEFAULT_RESAMPLE_FN = ResampleScrambleVarMonths()
 
 
 """
