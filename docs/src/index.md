@@ -36,8 +36,6 @@ TrendIdentity
 Methods to obtain bases of population monthly price changes.
 
 ```@docs
-param_gsbb_mod
-param_sbb
 InflationParameter
 ParamTotalCPIRebase
 ParamTotalCPI
@@ -67,8 +65,8 @@ GT_EVAL_T0010
 Functions for generating inflation trajectories.
 
 ```@docs
-gentrayinfl
-pargentrayinfl
+gentrajinfl
+pargentrajinfl
 ```
 
 ## Evaluation & Metrics
@@ -92,7 +90,6 @@ eval_corr_online
 Optimal combination of estimators and related utilities.
 
 ```@docs
-combination_weights
 average_mats
 ridge_combination_weights
 lasso_combination_weights
@@ -100,13 +97,4 @@ share_combination_weights
 elastic_combination_weights
 metric_combination_weights
 absme_combination_weights
-```
-
-## Cross-Validation
-
-Functions for cross-validation and related utilities.
-
-```@docs
-add_ones
-crossvalidate
 ```
