@@ -39,8 +39,7 @@ TrendIdentity
 Methods to obtain bases of population monthly price changes.
 
 ```@docs
-param_gsbb_mod
-param_sbb
+param_scramblevar_fn
 InflationParameter
 ParamTotalCPIRebase
 ParamTotalCPI
