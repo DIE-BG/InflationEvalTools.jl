@@ -60,16 +60,12 @@ module InflationEvalTools
     export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity
     include("trend/TrendFunction.jl")
 
-    ## Methods to obtain the population datasets of monthly price changes month-to-month variations
-    export param_gsbb_mod, param_sbb, param_scramblevar_fn
-    include("param/param.jl")
-
     export InflationParameter, ParamTotalCPIRebase, ParamTotalCPI, ParamWeightedMean
     export ParamTotalCPILegacyRebase # evaluation parameter 2019
     include("param/InflationParameter.jl")
 
     # Types for simulation configuration
-    export AbstractConfig, SimConfig, CrossEvalConfig
+    export AbstractConfig, SimConfig
     export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
     export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
     include("config/EvalPeriod.jl")
@@ -92,19 +88,11 @@ module InflationEvalTools
     include("simulate/eval_mse_online.jl")
     include("simulate/eval_absme_online.jl")
     include("simulate/eval_corr_online.jl")
-    include("simulate/cvsimutils.jl") # functions for cross-validation methodology
     
-
     ## Optimal MSE combination of estimators 
-    export combination_weights, average_mats
+    export average_mats
     export ridge_combination_weights, lasso_combination_weights
-    export share_combination_weights
     export elastic_combination_weights
-    export metric_combination_weights
-    export absme_combination_weights
-    include("combination/combination_weights.jl")
-    include("combination/metric_combination_weights.jl")
-    include("combination/absme_combination_weights.jl")
 
     ## Functions in development 
 
