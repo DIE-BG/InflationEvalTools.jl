@@ -11,9 +11,6 @@ Types, functions, and simulation utilities for the evaluation of inflation measu
 Resampling functions for CPI bases and related utilities.
 
 ```@docs
-ResampleSBB
-ResampleGSBB
-ResampleGSBBMod
 ResampleScrambleVarMonths
 ResampleScrambleTrended
 ResampleTrended
@@ -54,7 +51,6 @@ Types and utilities for simulation and evaluation period configuration.
 ```@docs
 AbstractConfig
 SimConfig
-CrossEvalConfig
 CompletePeriod
 EvalPeriod
 PeriodVector
@@ -70,8 +66,8 @@ GT_EVAL_T0010
 Functions for generating inflation trajectories.
 
 ```@docs
-gentrayinfl
-pargentrayinfl
+gentrajinfl
+pargentrajinfl
 ```
 
 ## Evaluation & Metrics
@@ -103,13 +99,4 @@ share_combination_weights
 elastic_combination_weights
 metric_combination_weights
 absme_combination_weights
-```
-
-## Cross-Validation
-
-Functions for cross-validation and related utilities.
-
-```@docs
-add_ones
-crossvalidate
 ```

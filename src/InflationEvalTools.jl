@@ -66,7 +66,7 @@ module InflationEvalTools
     include("param/InflationParameter.jl")
 
     # Types for simulation configuration
-    export AbstractConfig, SimConfig, CrossEvalConfig
+    export AbstractConfig, SimConfig
     export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
     export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
     include("config/EvalPeriod.jl")
@@ -89,9 +89,7 @@ module InflationEvalTools
     include("simulate/eval_mse_online.jl")
     include("simulate/eval_absme_online.jl")
     include("simulate/eval_corr_online.jl")
-    include("simulate/cvsimutils.jl") # functions for cross-validation methodology
     
-
     ## Optimal MSE combination of estimators 
     export combination_weights, average_mats
     export ridge_combination_weights, lasso_combination_weights
@@ -102,11 +100,6 @@ module InflationEvalTools
     include("combination/combination_weights.jl")
     include("combination/metric_combination_weights.jl")
     include("combination/absme_combination_weights.jl")
-
-    ## Functions for cross-validation
-    export add_ones
-    export crossvalidate
-    include("combination/cross_validation.jl")
 
     ## Functions in development 
 

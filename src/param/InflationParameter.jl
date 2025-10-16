@@ -14,7 +14,7 @@ See also: [`ParamTotalCPIRebase`](@ref), [`ParamTotalCPI`](@ref), [`ParamWeighte
 """
 Base.@kwdef struct InflationParameter{F, R, T} <: AbstractInflationParameter{F, R, T}
     inflfn::F = InflationTotalRebaseCPI()
-    resamplefn::R = ResampleSBB(36)
+    resamplefn::R = ResampleScrambleVarMonths()
     trendfn::T = TrendRandomWalk()
 end
 
