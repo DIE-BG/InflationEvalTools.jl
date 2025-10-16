@@ -90,9 +90,15 @@ module InflationEvalTools
     include("simulate/eval_corr_online.jl")
     
     ## Optimal MSE combination of estimators 
-    export average_mats
+    export combination_weights, average_mats
     export ridge_combination_weights, lasso_combination_weights
+    export share_combination_weights
     export elastic_combination_weights
+    export metric_combination_weights
+    export absme_combination_weights
+    include("combination/combination_weights.jl")
+    include("combination/metric_combination_weights.jl")
+    include("combination/absme_combination_weights.jl")
 
     ## Functions in development 
 

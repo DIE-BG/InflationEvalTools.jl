@@ -90,6 +90,7 @@ eval_corr_online
 Optimal combination of estimators and related utilities.
 
 ```@docs
+combination_weights
 average_mats
 ridge_combination_weights
 lasso_combination_weights
