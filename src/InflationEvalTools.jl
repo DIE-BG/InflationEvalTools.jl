@@ -35,6 +35,7 @@ module InflationEvalTools
 
 
     ## Resampling functions for CPI bases
+    export ResampleExtendedSVM
     export ResampleScrambleVarMonths
     export ResampleScrambleTrended
     export ResampleTrended
@@ -46,6 +47,9 @@ module InflationEvalTools
     # Resampling method using selection of the same months of
     # occurrence
     include("resample/ResampleScrambleVarMonths.jl")
+    # Resampling method using selection of the same months of
+    # occurrence (extended version)
+    include("resample/ResampleExtendedSVM.jl")
     # Resampling method using selection of the same months of
     # occurrence with weighted distributions to maintain correlation in
     # the resampling
