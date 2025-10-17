@@ -52,7 +52,9 @@ module InflationEvalTools
     # Similar to the previous one, but with individual parameters per base 
     export ResampleTrended
     include("resample/ResampleTrended.jl")
-    ## Methods to obtain the population datasets of monthly price changes month-to-month variations
+    # B-TIMA's Extension methodology: Synthetic resampling using prior information 
+    export CPIVarietyMatchDistribution
+    include("resample/ResampleSynthetic.jl")
     
     ## Functions for trend application
     export RWTREND
