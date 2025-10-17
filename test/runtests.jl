@@ -24,8 +24,8 @@ using Test
 end
 
 
-# Pruebas sobre funciones de tendencia
-@testset "Funciones de tendencia" begin
+# Tests on trend functions objects
+@testset "Trend Functions" begin
 
     # Crear un CountryStructure de ceros para pruebas
     cst = getzerocountryst()

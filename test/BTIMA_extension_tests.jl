@@ -6,10 +6,11 @@ using Test
 using CPIDataGT
 using Distributions: pdf, Normal
 using Statistics: mean, std
-using StatsBase: sample
+using StatsBase: sample, sample!
+import Random
 
 CPIDataGT.load_data()
-includet("BTIMA_extension_helpers.jl")  # Extension helper functions
+include("BTIMA_extension_helpers.jl")  # Extension helper functions
 
 code_b10 = "_0111101"
 code_b23 = "_0111101"
@@ -56,8 +57,8 @@ bootstrap_sample = sample(var1, 10000)
 
 # In-place methods
 x = zeros(eltype(var1), 100)
-@which sample!(var1, x)
+sample!(var1, x)
 
-histogram(bootstrap_sample)
-barplot(var1.vkdistr, var1.weights)
+# histogram(bootstrap_sample)
+# barplot(var1.vkdistr, var1.weights)
 
