@@ -1,21 +1,24 @@
 ##  ----------------------------------------------------------------------------
 #   Synthetic Resampler of the B-TIMA Extension Methodology
 #
-#   We implement a CPI variety match item, called `CPIVarietyMatch` to hold a
-#   sample of old and new observations from the two adjacent CPI datasets. This
-#   object is used to sample individual item's monthly price changes as defined
-#   in the B-TIMA Extension Methodology document.
+#   We implement a CPI variety match item, called `CPIVarietyMatchDistribution`
+#   to hold a sample of old and new observations from the two adjacent CPI
+#   datasets. This object is used to sample individual item's monthly price
+#   changes as defined in the B-TIMA Extension Methodology document.
 #
 #   Then, we implement the `ResampleFunction` called `ResampleSynthetic` to
 #   implement the resampling procedure to the full CPI datasets represented by
 #   `CountryStructure` objects.
 #   ----------------------------------------------------------------------------
 
-
 import Statistics
 import StatsBase: ProbabilityWeights, pweights
 import Random: AbstractRNG
 using UnicodePlots: barplot
+
+##  ----------------------------------------------------------------------------
+#   CPIVarietyMatchDistribution
+#   ----------------------------------------------------------------------------
 
 Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
     vkdistr::Vector{T}              # Distribution of variety k of monthly price changes
@@ -33,10 +36,10 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
             actual_dist::AbstractVector{T},
             month::Int,
             weighing_function::Function = synthetic_reweighing,
-            prior_variety_id= nothing,
-            prior_variety_name= nothing,
-            actual_variety_id= nothing,
-            actual_variety_name= nothing
+            prior_variety_id = nothing,
+            prior_variety_name = nothing,
+            actual_variety_id = nothing,
+            actual_variety_name = nothing
         ) where {T <: AbstractFloat}
 
         # Validation
@@ -78,10 +81,10 @@ function CPIVarietyMatchDistribution(
         actual_dist::AbstractVector{T},
         month::Int,
         weighing_function_type::Symbol = :synthetic,
-        prior_variety_id= nothing,
-        prior_variety_name= nothing,
-        actual_variety_id= nothing,
-        actual_variety_name= nothing
+        prior_variety_id = nothing,
+        prior_variety_name = nothing,
+        actual_variety_id = nothing,
+        actual_variety_name = nothing
     ) where {T <: AbstractFloat}
 
     weighing_function_dict = Dict(
@@ -114,7 +117,7 @@ function _reweigh(vkdistr::AbstractArray{T}, f::Function) where {T}
     return pweights(weights)
 end
 
-function synthetic_reweighing(prior_dist, actual_dist; a = 0.35, eps=0.0001)
+function synthetic_reweighing(prior_dist, actual_dist; a = 0.35, eps = 0.0001)
     vdistr = [prior_dist..., actual_dist...]
     # Computes the mean of the new observations
     actual_mean = mean(actual_dist)
@@ -130,10 +133,9 @@ end
 
 function actual_reweighing(prior_dist, actual_dist)
     T = eltype(actual_dist)
-    reweighing_function =  x -> x in actual_dist ? one(T) : zero(T)
+    reweighing_function = x -> x in actual_dist ? one(T) : zero(T)
     return reweighing_function
 end
-
 
 
 # Base methods
@@ -167,10 +169,10 @@ end
 
 function Base.show(io::IO, cpi_match_dist::CPIVarietyMatchDistribution{T}) where {T}
     m = cpi_match_dist.month
-    H = sum(cpi_match_dist.actual_mask)
+    H = count(cpi_match_dist.actual_mask)
     J = length(cpi_match_dist) - H
     expected_value = mean(cpi_match_dist)
-    print(io, typeof(cpi_match_dist))
+    print(io, "CPIVMD")
     return print(io, "($m, $J, $H, $expected_value)")
 end
 
@@ -185,10 +187,10 @@ Statistics.std(cpi_match_dist::CPIVarietyMatchDistribution) = StatsBase.std(
 
 # Extend sampling methods
 StatsBase.sample(cpi_match_dist::CPIVarietyMatchDistribution) =
-    StatsBase.sample(StatsBase.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights)
+    StatsBase.sample(Random.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights)
 
 StatsBase.sample(cpi_match_dist::CPIVarietyMatchDistribution, n::Int) =
-    StatsBase.sample(StatsBase.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights, n)
+    StatsBase.sample(Random.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights, n)
 
 StatsBase.sample(rng::AbstractRNG, cpi_match_dist::CPIVarietyMatchDistribution) =
     StatsBase.sample(rng, cpi_match_dist.vkdistr, cpi_match_dist.weights)
@@ -205,3 +207,112 @@ StatsBase.sample!(
     cpi_match_dist::CPIVarietyMatchDistribution, x;
     replace = true, ordered = false
 ) = StatsBase.sample!(StatsBase.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights, x; replace, ordered)
+
+
+##  ----------------------------------------------------------------------------
+#   ResampleSynthetic: Resampling function using an array of the
+#   CPIVarietyMatchDistribution objects
+#   ----------------------------------------------------------------------------
+
+struct ResampleSynthetic{A} <: ResampleFunction
+    matching::A
+    periods::Int
+
+    function ResampleSynthetic(base::VarCPIBase, matching_structure::A, numperiods::Int = periods(base)) where {A}
+        _validate_synthetic_params(base, matching_structure, numperiods)
+        return new{A}(matching_structure, numperiods)
+    end
+
+end
+
+method_name(::ResampleSynthetic) = "IID Bootstrap Synthetic Resampling"
+method_tag(::ResampleSynthetic) = "SYNTH"
+
+function _validate_synthetic_params(base::VarCPIBase, matching_structure, numperiods)
+    # Check for the dimension of the matching structure
+    ndims(matching_structure) == 2 || error("Matching structure requires a 2-dimensional object with (periods, items)")
+    # Check at least the same number of months in the data as in the matching structure
+    base_periods = periods(base)
+    matching_periods = size(matching_structure, 1)
+    if (matching_periods < 12 && matching_periods < base_periods)
+        error("Not enough matching periods for the specified base")
+    elseif (matching_periods > 12)
+        @warn "More than 12 periods specified in the matching structure"
+    end
+    # Check all matching objects have the same months along the same rows
+    mapreduce(==, eachrow(matching_structure)) do row
+        # Get months of all matching objects
+        months = [cpi_match_dist.month for cpi_match_dist in row]
+        return allequal(months)
+    end
+
+    # Check numperiods is positive 
+    (numperiods > 0) || error("Resampling periods must be positive")
+
+    # Perform checks on appropriate sizes for resampling
+    base_nitems = size(base.v, 2)
+    sampler_nitems = size(matching_structure, 2)
+    (sampler_nitems == base_nitems) || error("The matching structure has less items than the VarCPIBase object")
+
+    # Check start month of the VarCPIbase coincides with months in the matching structure
+    base_initial_month = month(first(base.dates))
+    sampler_initial_month = first(matching_structure).month
+    (sampler_initial_month == base_initial_month) || error("Matching objects month order differs from the VarCPIBase dates")
+end
+
+## Definition of its resampling procedures 
+
+# This type is not conceived to be used for general resampling of CountryStructures
+function (::ResampleSynthetic)(::CountryStructure, ::AbstractRNG)
+    error("This bootstrap resampling function does not operate with `CountryStructures` because of the required matching structure")
+end
+
+# The general definition for VarCPIBases is good enough for this function
+# function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)
+
+# We redefine how to resample from a matrix of monthly price changes (periods, items)
+function (resamplefn::ResampleSynthetic)(vmat::AbstractMatrix, rng::AbstractRNG = Random.GLOBAL_RNG)
+    # Take resampling periods from original matrix or from the attribute of the
+    # resample function
+    nperiods = (resamplefn.periods === nothing) ? size(vmat, 1) : resamplefn.periods
+    nitems = size(vmat, 2)
+    # Create and return the resampled series
+    resampled_vmat = similar(vmat, nperiods, nitems)
+    
+    # Sample from the CPI matching items stored in the resample function
+    for j in 1:nitems, m in 1:min(nperiods, 12)
+        # Get the CPI matching object for item j and month m
+        cpi_match_dist = resamplefn.matching[m, j]
+        # Sample from the distribution to fill observations from the same months
+        resampled_slice = @view resampled_vmat[m:12:end, j]
+        StatsBase.sample!(rng, cpi_match_dist, resampled_slice)
+    end
+    return resampled_vmat
+end
+
+
+## Population dataset function 
+
+function get_param_function(resamplefn::ResampleSynthetic) 
+    matching_structure = resamplefn.matching
+    numperiods = resamplefn.periods
+    # Build a closure to return the appropriate size VarCPIBase objects with the
+    # population data
+    population_data_fn = base -> param_synth_sampler_fn(base, matching_structure, numperiods)
+    return population_data_fn
+end
+
+function param_synth_sampler_fn(base::VarCPIBase, matching_structure, numperiods)
+    # Get the population data from the array of matching objects
+    population_vmat_matching = map(mean, matching_structure)
+
+    # Form a population data matrix with the same number of periods as the resample function
+    repsize = div(numperiods, size(matching_structure, 1)) + 1
+    population_vmat = repeat(population_vmat_matching, repsize)
+    population_vmat = population_vmat[1:numperiods, :]
+
+    # Construct a VarCPIBase object and return it
+    start_date = first(base.dates)
+    dates = start_date:Month(1):(start_date + Month(numperiods - 1))
+    return VarCPIBase(population_vmat, base.w, dates, base.baseindex)
+end

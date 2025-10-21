@@ -54,7 +54,11 @@ export ResampleTrended
 include("resample/ResampleTrended.jl")
 # B-TIMA's Extension methodology: Synthetic resampling using prior information
 export CPIVarietyMatchDistribution
+export ResampleSynthetic
 include("resample/ResampleSynthetic.jl")
+# Identity resampler 
+export ResampleIdentity
+include("resample/ResampleIdentity.jl")
 
 ## Functions for trend application
 export RWTREND

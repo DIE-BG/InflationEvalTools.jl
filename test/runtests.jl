@@ -68,6 +68,14 @@ end
 
 end
 
+
+# Tests for the ResampleIdentity object
+@testset "ResampleIdentity basic behaviour" begin 
+    include("ResampleIdentity_tests.jl")
+end
+
+
+# Tests for the CPIVarietyMatchDistribution and the ResampleSynthetic
 @testset "B-TIMA Extension Tests" begin
     include("BTIMA_extension_tests.jl")
 end

@@ -14,6 +14,8 @@ Resampling functions for CPI bases and related utilities.
 ResampleScrambleVarMonths
 ResampleScrambleTrended
 ResampleTrended
+ResampleIdentity
+ResampleSynthetic
 get_param_function
 method_name
 method_tag
