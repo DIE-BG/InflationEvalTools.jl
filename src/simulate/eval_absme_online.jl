@@ -49,7 +49,7 @@ function eval_absme_online(
     K = 1000, rndseed = DEFAULT_SEED)
 
     # Trajectory computation task
-    me = @showprogress @distributed (OnlineStats.merge) for k in 1:K 
+    me = @showprogress @distributed (Base.merge) for k in 1:K 
         # Set the seed in the process
         Random.seed!(LOCAL_RNG, rndseed + k)
 

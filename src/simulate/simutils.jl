@@ -47,7 +47,7 @@ function compute_lowlevel_sim(
     @info "B-TIMA assessment simulation" measure = measure_name(config.inflfn) resample = method_name(config.resamplefn) trend = method_name(config.trendfn) assessment = measure_name(config.paramfn) simulations = config.nsim traindate = config.traindate periods = config.evalperiods
 
     # Generate the simulated inflation trajectories
-    traj_infl = Distributed.@sync pargentrajinfl(
+    traj_infl = pargentrajinfl(
         config.inflfn, # inflation function
         config.resamplefn, # resampling function
         config.trendfn, # trend function

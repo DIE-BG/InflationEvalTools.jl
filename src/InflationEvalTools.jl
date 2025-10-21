@@ -5,24 +5,25 @@ Types, functions, and other simulation utilities for the evaluation of inflation
 """
 module InflationEvalTools
 
-using DrWatson
-using Dates
-using CPIDataBase
-using InflationFunctions
-import Random
-using Distributions
-using ProgressMeter
-using Distributed
-using SharedArrays
-using Reexport
-using StableRNGs
-import OnlineStats
-import StatsBase
-using LinearAlgebra: I, det, mul!, dot
-using JuMP, Ipopt
-using Chain
-using JLD2
-import Optim
+using CPIDataBase: CPIDataBase, CountryStructure, InflationFunction,
+    InflationTotalCPI, VarCPIBase, getunionalltype, infl_dates,
+    infl_periods, measure_name, measure_tag, num_measures,
+    periods
+using Chain: Chain, @chain
+using Dates: Dates, Date, DateFormat, Month, TimeType, month
+using Distributed: Distributed, @distributed, RemoteChannel
+using Distributions: Distributions, Normal, cor, mean, pdf, std
+using DrWatson: DrWatson, savename, struct2dict, tostringdict, wsave
+using InflationFunctions: InflationFunctions, InflationTotalRebaseCPI,
+    InflationWeightedMean
+using Ipopt: Ipopt
+using JLD2: JLD2, load
+using JuMP: JuMP, @constraint, @constraints, @objective, @variable, Model,
+    optimize!, set_silent
+using ProgressMeter: ProgressMeter, @showprogress, Progress, next!
+using Reexport: Reexport
+using SharedArrays: SharedArrays, SharedArray, sdata
+using StableRNGs: StableRNGs, StableRNG
 
 ## Default configuration of the seed for the simulation process
 """
@@ -56,7 +57,7 @@ include("resample/ResampleTrended.jl")
 export CPIVarietyMatchDistribution
 export ResampleSynthetic
 include("resample/ResampleSynthetic.jl")
-# Identity resampler 
+# Identity resampler
 export ResampleIdentity
 include("resample/ResampleIdentity.jl")
 

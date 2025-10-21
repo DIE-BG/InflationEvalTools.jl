@@ -15,6 +15,7 @@ import Statistics
 import StatsBase: ProbabilityWeights, pweights
 import Random: AbstractRNG
 using UnicodePlots: barplot
+import StatsBase
 
 ##  ----------------------------------------------------------------------------
 #   CPIVarietyMatchDistribution
@@ -35,7 +36,7 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
             prior_dist::AbstractVector{T},
             actual_dist::AbstractVector{T},
             month::Int,
-            weighing_function::Function = synthetic_reweighing,
+            weighing_function::Union{Symbol, Function} = synthetic_reweighing,
             prior_variety_id = nothing,
             prior_variety_name = nothing,
             actual_variety_id = nothing,
@@ -58,7 +59,17 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
         actual_mask = mask[sortinds]
 
         # Compute sampling weights according to weighing function
-        g = weighing_function(prior_dist, actual_dist)
+        weighing_function_dict = Dict(
+            :synthetic => synthetic_reweighing,
+            :prior => prior_reweighing,
+            :actual => actual_reweighing,
+        )
+        if (weighing_function isa Symbol && weighing_function in keys(weighing_function_dict))
+            weighing_function_ = weighing_function_dict[weighing_function]
+        else
+            weighing_function_ = weighing_function
+        end
+        g = weighing_function_(prior_dist, actual_dist)
         wkj = _reweigh(vkdistr, g)
 
         # Compute the expected value
@@ -75,35 +86,6 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
 end
 
 # const CPIVMD{T} = CPIVarietyMatchDistribution{T}
-
-function CPIVarietyMatchDistribution(
-        prior_dist::AbstractVector{T},
-        actual_dist::AbstractVector{T},
-        month::Int,
-        weighing_function_type::Symbol = :synthetic,
-        prior_variety_id = nothing,
-        prior_variety_name = nothing,
-        actual_variety_id = nothing,
-        actual_variety_name = nothing
-    ) where {T <: AbstractFloat}
-
-    weighing_function_dict = Dict(
-        :synthetic => synthetic_reweighing,
-        :prior => prior_reweighing,
-        :actual => actual_reweighing,
-    )
-
-    return CPIVarietyMatchDistribution(
-        prior_dist,
-        actual_dist,
-        month,
-        weighing_function_dict[weighing_function_type],
-        prior_variety_id,
-        prior_variety_name,
-        actual_variety_id,
-        actual_variety_name,
-    )
-end
 
 # Returns the normalized weights
 function _reweigh(vkdistr::AbstractArray{T}, f::Function) where {T}
@@ -206,7 +188,7 @@ StatsBase.sample!(
 StatsBase.sample!(
     cpi_match_dist::CPIVarietyMatchDistribution, x;
     replace = true, ordered = false
-) = StatsBase.sample!(StatsBase.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights, x; replace, ordered)
+) = StatsBase.sample!(Random.default_rng(), cpi_match_dist.vkdistr, cpi_match_dist.weights, x; replace, ordered)
 
 
 ##  ----------------------------------------------------------------------------

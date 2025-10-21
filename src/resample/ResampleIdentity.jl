@@ -9,7 +9,7 @@
 #  returns the population `VarCPIBase` (identity behaviour).
 ## ----------------------------------------------------------------------------
 
-import Random: AbstractRNG
+import Random
 
 """
     ResampleIdentity()
