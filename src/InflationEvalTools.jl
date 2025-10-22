@@ -61,6 +61,9 @@ include("resample/ResampleSynthetic.jl")
 # Identity resampler
 export ResampleIdentity
 include("resample/ResampleIdentity.jl")
+# Mixture resampler 
+export ResampleMixture
+include("resample/ResampleMixture.jl")
 
 ## Functions for trend application
 export RWTREND

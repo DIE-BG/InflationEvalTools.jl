@@ -79,3 +79,6 @@ end
 @testset "B-TIMA Extension Tests" begin
     include("BTIMA_extension_tests.jl")
 end
+
+# Tests for the ResampleMixture object
+include("ResampleMixture_tests.jl")

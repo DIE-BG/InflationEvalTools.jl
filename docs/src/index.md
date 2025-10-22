@@ -30,6 +30,7 @@ ResampleSynthetic
 synthetic_reweighing
 prior_reweighing
 actual_reweighing.
+ResampleMixture
 ```
 
 ## Trend Functions
