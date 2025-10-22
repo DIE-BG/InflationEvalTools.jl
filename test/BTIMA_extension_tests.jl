@@ -13,6 +13,9 @@ import Random
 CPIDataGT.load_data()
 include("BTIMA_extension_helpers.jl")  # Extension helper functions
 
+# Test data
+GT24_test = GTDATA24[Date(2025,1), Date(2025,9)].base[1]
+
 allin(v_sample, v_collection) = all(in.(v_sample, Ref(v_collection)))
 nonein(v_sample, v_collection) = !any(in.(v_sample, Ref(v_collection)))
 
@@ -133,21 +136,21 @@ var3 = CPIVarietyMatchDistribution(v_10, v_23, m, InflationEvalTools.actual_rewe
 #   objects
 #   ----------------------------------------------------------------------------
 
-nperiods = periods(GT24)
-nitems = items(GT24)
+nperiods = periods(GT24_test)
+nitems = items(GT24_test)
 
 # First 99 items var1 : synthetic
 # Up to the 350 items, var2 : prior, then var3 : actual
 matching_array = [j < 100 ? var1 : (j < 350) ? var2 : var3 for m in 1:12, j in 1:nitems]
 
 # Resampling function with the same number of periods
-synth_resampler = ResampleSynthetic(GT24, matching_array)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array)
 
 # It should not work with a CountryStructure
 @test_throws ErrorException synth_resampler(GTDATA24)
 
 # Resample a VarCPIBase object
-varbase_sample = synth_resampler(GT24)
+varbase_sample = synth_resampler(GT24_test)
 
 # Check synthetic sample
 @test allin(varbase_sample.v[:, 1], synth_distr)
@@ -163,11 +166,11 @@ varbase_sample = synth_resampler(GT24)
 
 ## Extend the sampling for 5 years
 
-synth_resampler = ResampleSynthetic(GT24, matching_array, 12*5)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array, 12*5)
 @test synth_resampler.periods == 60
 
 # Resample a VarCPIBase object
-varbase_sample = synth_resampler(GT24)
+varbase_sample = synth_resampler(GT24_test)
 
 # Check synthetic sample
 @test allin(varbase_sample.v[:, 1], synth_distr)
@@ -183,7 +186,7 @@ varbase_sample = synth_resampler(GT24)
 
 ## Incorrect sizes the VarCPIBase objects
 
-synth_resampler = ResampleSynthetic(GT24, matching_array, 12*5)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array, 12*5)
 
 # GT23 has 437 items, while GT24 has 436
 @test_throws BoundsError synth_resampler(GT23)
@@ -191,9 +194,9 @@ synth_resampler = ResampleSynthetic(GT24, matching_array, 12*5)
 
 ## Shifted dates in GT24
 
-synth_resampler = ResampleSynthetic(GT24, matching_array)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array)
 
-shifted_GT24 = VarCPIBase(GT24.v, GT24.w, Date(2025,3):Month(1):Date(2025,11), GT24.baseindex)
+shifted_GT24 = VarCPIBase(GT24_test.v, GT24_test.w, Date(2025,3):Month(1):Date(2025,11), GT24_test.baseindex)
 
 # It allows applying it to shifted data...
 synth_resampler(shifted_GT24)
@@ -206,12 +209,12 @@ synth_resampler(shifted_GT24)
 
 ## Population data 
 
-synth_resampler = ResampleSynthetic(GT24, matching_array)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array)
 population_data_fn = get_param_function(synth_resampler)
-population_varbase = population_data_fn(GT24)
+population_varbase = population_data_fn(GT24_test)
 
 # Number of periods
-@test periods(population_varbase) == periods(GT24)
+@test periods(population_varbase) == periods(GT24_test)
 # Check synthetic sample
 @test all(population_varbase.v[:, 1] .== mean(var1))
 # Check prior-only sample
@@ -219,9 +222,9 @@ population_varbase = population_data_fn(GT24)
 # Check actual-only sample
 @test all(population_varbase.v[:, 400] .== mean(var3))
 
-synth_resampler = ResampleSynthetic(GT24, matching_array, 12*5)
+synth_resampler = ResampleSynthetic(GT24_test, matching_array, 12*5)
 population_data_fn = get_param_function(synth_resampler)
-population_varbase = population_data_fn(GT24)
+population_varbase = population_data_fn(GT24_test)
 
 # Number of periods
 @test periods(population_varbase) == 12*5

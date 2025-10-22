@@ -113,9 +113,10 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
             :actual => actual_reweighing,
         )
         if (weighing_function_type isa Symbol && weighing_function_type in keys(weighing_function_dict))
-            weighing_function = weighing_function_dict[weighing_function]
+            weighing_function = weighing_function_dict[weighing_function_type]
         else
-            weighing_function = weighing_function
+            # The type provided is itself the function to apply
+            weighing_function = weighing_function_type
         end
         g = weighing_function(prior_dist, actual_dist)
         wkj = _reweigh(vkdistr, g)
