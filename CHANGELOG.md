@@ -7,7 +7,8 @@ All notable changes to this project will be documented in this file.
 - Refactored `evalsim` into `compute_lowlevel_sim`. 
 - Refactored `makesim` into `compute_assessment_sim`.
 - Refactored `run_batch` into `run_assessment_batch`.
-- Make concrete type `PeriodVector` public. 
+- Make concrete type `PeriodVector` public.
+- Make concrete type `ResampleExtendedSVM` public.
 
 ## [0.2.1] - 2025-09
 ### Fixed
