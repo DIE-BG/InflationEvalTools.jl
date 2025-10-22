@@ -23,7 +23,7 @@ end
 # Define how to resample matrices with time series in the columns.
 # Uses the internal function `scramblevar`.
 function (resamplefn::ResampleExtendedSVM)(cs::CountryStructure, rng=Random.GLOBAL_RNG)
-    @Main.infiltrate
+    
     if isa(resamplefn.extension_periods, Vector) &&
        length(resamplefn.extension_periods) != length(cs.base)
         error("The vector of periods must have the same number of VarCPIBase in the CountyStructure")
@@ -55,7 +55,7 @@ function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, extension_periods::
 end
 
 function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, rng=Random.GLOBAL_RNG)
-    @Main.infiltrate
+    
     v_boot = resamplefn(base.v, resamplefn.extension_periods, rng)
     # Extend the dates
     startdate = base.dates[1]
