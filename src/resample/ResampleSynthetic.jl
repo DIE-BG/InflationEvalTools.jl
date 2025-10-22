@@ -12,15 +12,63 @@
 #   ----------------------------------------------------------------------------
 
 import Statistics
-import StatsBase: ProbabilityWeights, pweights
+import StatsBase: StatsBase, ProbabilityWeights, pweights
 import Random: AbstractRNG
 using UnicodePlots: barplot
-import StatsBase
 
 ##  ----------------------------------------------------------------------------
 #   CPIVarietyMatchDistribution
 #   ----------------------------------------------------------------------------
 
+"""
+    CPIVarietyMatchDistribution(
+        prior_dist, 
+        actual_dist, 
+        month; 
+        weighing_function_type=:synthetic, 
+        prior_variety_id=nothing, 
+        prior_variety_name=nothing, 
+        actual_variety_id=nothing, 
+        actual_variety_name=nothing
+    )
+
+Create a synthetic empirical distribution that matches an item (variety)
+between two adjacent CPI bases. The object stores the concatenated
+distribution of monthly price changes, sampling weights (according to the
+selected reweighing strategy), and metadata such as the month and optional
+ids/names.
+
+Arguments
+- `prior_dist`, `actual_dist`: vectors of monthly price changes for the
+    prior and actual variety samples.
+- `month`: integer month (1..12) the observations correspond to.
+
+Keyword arguments
+- `weighing_function_type`: `:synthetic` (default), `:prior`, `:actual`, or a
+    custom function accepting `(prior_dist, actual_dist)` and returning a
+    scalar weighting function `w(x)` used to construct sampling weights.
+- optional `prior_variety_id`, `prior_variety_name`, `actual_variety_id`,
+    `actual_variety_name` to store identifying metadata.
+
+Example
+
+```julia
+# Suppose v_10 and v_23 are two vectors of monthly changes for the same item
+# observed in two CPI bases and m is the month (1..12).
+var = CPIVarietyMatchDistribution(v_10, v_23, m)
+println(var)                     # short display
+mean(var)                        # returns the computed expected value
+std(var)                         # returns the weighted std dev
+StatsBase.sample(var)            # draw one sample (uses stored weights)
+StatsBase.sample(var, 10)        # draw 10 samples
+
+# You can explicitly request prior-only or actual-only sampling:
+var_prior = CPIVarietyMatchDistribution(v_10, v_23, m, :prior)
+var_actual = CPIVarietyMatchDistribution(v_10, v_23, m, :actual)
+```
+
+See also: `synthetic_reweighing`, `prior_reweighing`, `actual_reweighing`.
+"""
 Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
     vkdistr::Vector{T}              # Distribution of variety k of monthly price changes
     weights::ProbabilityWeights     # Frequency weights vector for resampling
@@ -36,7 +84,7 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
             prior_dist::AbstractVector{T},
             actual_dist::AbstractVector{T},
             month::Int,
-            weighing_function::Union{Symbol, Function} = synthetic_reweighing,
+            weighing_function_type::Union{Symbol, Function} = synthetic_reweighing,
             prior_variety_id = nothing,
             prior_variety_name = nothing,
             actual_variety_id = nothing,
@@ -64,12 +112,12 @@ Base.@kwdef struct CPIVarietyMatchDistribution{T <: AbstractFloat}
             :prior => prior_reweighing,
             :actual => actual_reweighing,
         )
-        if (weighing_function isa Symbol && weighing_function in keys(weighing_function_dict))
-            weighing_function_ = weighing_function_dict[weighing_function]
+        if (weighing_function_type isa Symbol && weighing_function_type in keys(weighing_function_dict))
+            weighing_function = weighing_function_dict[weighing_function]
         else
-            weighing_function_ = weighing_function
+            weighing_function = weighing_function
         end
-        g = weighing_function_(prior_dist, actual_dist)
+        g = weighing_function(prior_dist, actual_dist)
         wkj = _reweigh(vkdistr, g)
 
         # Compute the expected value
@@ -99,6 +147,22 @@ function _reweigh(vkdistr::AbstractArray{T}, f::Function) where {T}
     return pweights(weights)
 end
 
+"""
+    synthetic_reweighing(prior_dist, actual_dist; a = 0.35, eps = 0.0001)
+
+Create a reweighing function that assigns weights based on how close each value is to 
+the mean of the actual distribution, using a normal density function. This is the default
+reweighing strategy used in CPIVarietyMatchDistribution.
+
+# Arguments
+- `prior_dist`: Vector of monthly price changes from the prior CPI base
+- `actual_dist`: Vector of monthly price changes from the actual CPI base
+- `a`: Scaling factor for the standard deviation (default: 0.35)
+- `eps`: Small value added to avoid zero variance (default: 0.0001)
+
+Returns a function `w(x)` that computes weights proportional to the normal density 
+of the absolute difference between x and the actual mean.
+"""
 function synthetic_reweighing(prior_dist, actual_dist; a = 0.35, eps = 0.0001)
     vdistr = [prior_dist..., actual_dist...]
     # Computes the mean of the new observations
@@ -107,12 +171,40 @@ function synthetic_reweighing(prior_dist, actual_dist; a = 0.35, eps = 0.0001)
     return x -> pdf(density, abs(x - actual_mean))
 end
 
+"""
+    prior_reweighing(prior_dist, actual_dist)
+
+Create a reweighing function that only samples from the prior distribution, assigning
+unit weights to values from the prior distribution and zero weights to values from
+the actual distribution.
+
+# Arguments
+- `prior_dist`: Vector of monthly price changes from the prior CPI base
+- `actual_dist`: Vector of monthly price changes from the actual CPI base (unused)
+
+Returns a function `w(x)` that assigns 1 if x is in the prior distribution and 0 otherwise.
+Used when `:prior` is specified as the weighing_function_type in CPIVarietyMatchDistribution.
+"""
 function prior_reweighing(prior_dist, actual_dist)
     T = eltype(prior_dist)
     reweighing_function = x -> x in prior_dist ? one(T) : zero(T)
     return reweighing_function
 end
 
+"""
+    actual_reweighing(prior_dist, actual_dist)
+
+Create a reweighing function that only samples from the actual distribution, assigning
+unit weights to values from the actual distribution and zero weights to values from
+the prior distribution.
+
+# Arguments
+- `prior_dist`: Vector of monthly price changes from the prior CPI base (unused)
+- `actual_dist`: Vector of monthly price changes from the actual CPI base
+
+Returns a function `w(x)` that assigns 1 if x is in the actual distribution and 0 otherwise.
+Used when `:actual` is specified as the weighing_function_type in CPIVarietyMatchDistribution.
+"""
 function actual_reweighing(prior_dist, actual_dist)
     T = eltype(actual_dist)
     reweighing_function = x -> x in actual_dist ? one(T) : zero(T)
@@ -146,16 +238,17 @@ function Base.show(io::IO, ::MIME"text/plain", cpi_match_dist::CPIVarietyMatchDi
         # ylabel = "Monthly price changes"
     )
 
-    return show(io, MIME("text/plain"), p)
+    show(io, MIME("text/plain"), p)
+    return
 end
 
 function Base.show(io::IO, cpi_match_dist::CPIVarietyMatchDistribution{T}) where {T}
     m = cpi_match_dist.month
-    H = count(cpi_match_dist.actual_mask)
-    J = length(cpi_match_dist) - H
-    expected_value = mean(cpi_match_dist)
+    JH = length(cpi_match_dist)
+    expected_value = round(mean(cpi_match_dist), digits = 4)
     print(io, "CPIVMD")
-    return print(io, "($m, $J, $H, $expected_value)")
+    print(io, "($m, $(JH), $expected_value)")
+    return
 end
 
 
@@ -196,6 +289,53 @@ StatsBase.sample!(
 #   CPIVarietyMatchDistribution objects
 #   ----------------------------------------------------------------------------
 
+"""
+    ResampleSynthetic(
+        base::VarCPIBase, 
+        matching_structure::Matrix{CPIVarietyMatchDistribution}, 
+        numperiods = periods(base)
+    )
+
+Create a resampling function that implements the B-TIMA Extension Methodology
+for generating synthetic samples from matched CPI items between two adjacent CPI
+bases. Importantly, `ResampleSynthetic` is to be used only for `VarCPIBase`
+objects because the required matching structure is specific to the `VarCPIBase`.
+
+# Arguments
+- `base`: A VarCPIBase object that provides reference dimensions and dates
+- `matching_structure`: A 2D array of CPIVarietyMatchDistribution objects with
+  shape (periods, items) containing the matching distributions for each item and
+  month
+- `numperiods`: Optional number of periods to generate in the resampled series
+  (defaults to the number of periods in base)
+
+# Example
+```julia
+# Create matching distributions for each item and month
+matching_array = Array{CPIVarietyMatchDistribution}(undef, 12, nitems)
+for j in 1:nitems, m in 1:12
+    v_prior, v_actual = get_obs_month(prior_codes[j], actual_codes[j], m)
+    # Use synthetic reweighing for items 1-99
+    # prior-only for items 100-349
+    # actual-only for remaining items
+    weighing = j < 100 ? :synthetic : (j < 350 ? :prior : :actual)
+    matching_array[m,j] = CPIVarietyMatchDistribution(v_prior, v_actual, m, weighing)
+end
+
+# Create resampler with 5 years of data
+synth_resampler = ResampleSynthetic(base, matching_array, 12*5)
+
+# Generate a synthetic sample
+varbase_sample = synth_resampler(base)
+
+# Get the population mean parameters
+population_fn = get_param_function(synth_resampler)
+population_base = population_fn(base)
+```
+
+See also: [`CPIVarietyMatchDistribution`](@ref), [`synthetic_reweighing`](@ref),
+[`prior_reweighing`](@ref), [`actual_reweighing`](@ref)
+"""
 struct ResampleSynthetic{A} <: ResampleFunction
     matching::A
     periods::Int
@@ -222,13 +362,14 @@ function _validate_synthetic_params(base::VarCPIBase, matching_structure, numper
         @warn "More than 12 periods specified in the matching structure"
     end
     # Check all matching objects have the same months along the same rows
-    mapreduce(==, eachrow(matching_structure)) do row
+    are_same_months_axes = mapreduce(==, eachrow(matching_structure)) do row
         # Get months of all matching objects
         months = [cpi_match_dist.month for cpi_match_dist in row]
         return allequal(months)
     end
+    are_same_months_axes || error("Matching structure contains mixed period numbers in its rows")
 
-    # Check numperiods is positive 
+    # Check numperiods is positive
     (numperiods > 0) || error("Resampling periods must be positive")
 
     # Perform checks on appropriate sizes for resampling
@@ -239,17 +380,17 @@ function _validate_synthetic_params(base::VarCPIBase, matching_structure, numper
     # Check start month of the VarCPIbase coincides with months in the matching structure
     base_initial_month = month(first(base.dates))
     sampler_initial_month = first(matching_structure).month
-    (sampler_initial_month == base_initial_month) || error("Matching objects month order differs from the VarCPIBase dates")
+    return (sampler_initial_month == base_initial_month) || error("Matching objects month order differs from the VarCPIBase dates")
 end
 
-## Definition of its resampling procedures 
+## Definition of its resampling procedures
 
 # This type is not conceived to be used for general resampling of CountryStructures
 function (::ResampleSynthetic)(::CountryStructure, ::AbstractRNG)
     error("This bootstrap resampling function does not operate with `CountryStructures` because of the required matching structure")
 end
 
-# The general definition for VarCPIBases is good enough for this function
+# The general definition for VarCPIBases is good enough for this resample function
 # function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)
 
 # We redefine how to resample from a matrix of monthly price changes (periods, items)
@@ -260,7 +401,7 @@ function (resamplefn::ResampleSynthetic)(vmat::AbstractMatrix, rng::AbstractRNG 
     nitems = size(vmat, 2)
     # Create and return the resampled series
     resampled_vmat = similar(vmat, nperiods, nitems)
-    
+
     # Sample from the CPI matching items stored in the resample function
     for j in 1:nitems, m in 1:min(nperiods, 12)
         # Get the CPI matching object for item j and month m
@@ -273,9 +414,9 @@ function (resamplefn::ResampleSynthetic)(vmat::AbstractMatrix, rng::AbstractRNG 
 end
 
 
-## Population dataset function 
+## Population dataset function
 
-function get_param_function(resamplefn::ResampleSynthetic) 
+function get_param_function(resamplefn::ResampleSynthetic)
     matching_structure = resamplefn.matching
     numperiods = resamplefn.periods
     # Build a closure to return the appropriate size VarCPIBase objects with the
