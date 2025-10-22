@@ -15,10 +15,21 @@ ResampleScrambleVarMonths
 ResampleScrambleTrended
 ResampleTrended
 ResampleIdentity
-ResampleSynthetic
 get_param_function
 method_name
 method_tag
+```
+
+## B-TIMA Extension 
+
+The B-TIMA extension procedure uses the following functions: 
+
+```@docs
+CPIVarietyMatchDistribution
+ResampleSynthetic
+synthetic_reweighing
+prior_reweighing
+actual_reweighing.
 ```
 
 ## Trend Functions
