@@ -42,18 +42,10 @@ Note that the resampling method could extend the periods of the time series and
 adjusts the dates appropriately.
 """
 function (resamplefn::ResampleFunction)(base::VarCPIBase, rng = Random.GLOBAL_RNG)
-
+    
     # Obtain the resampled matrix, requires defining the method to handle
     # matrices
-
-    # Verify if the resample funtion is the ResampleExtendedSVM
-    if isa(resamplefn::ResampleExtendedSVM, ResampleExtendedSVM)
-        # Use the ResampleExtendenSVM
-        v_boot = resamplefn(base.v, resamplefn.extension_periods, rng)
-    else
-        # Use another resample function. For example ResampleScrableVarMonths
-        v_boot = resamplefn(base.v, rng)
-    end
+    v_boot = resamplefn(base.v, rng)
     
     # Set up a new VarCPIBase. Weight vector and base indices
     # unchanged. Dates remain unchanged if the resampling function
