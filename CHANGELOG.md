@@ -3,12 +3,15 @@
 All notable changes to this project will be documented in this file.
  
 ## [Unreleased] - 2025
+### Added 
+- Resampling function `ResampleExtendedSVM` to sample CPI datasets as in the original B-TIMA methodology, but allowing for more periods in the sampling. 
 ### Changed
 - Refactored `evalsim` into `compute_lowlevel_sim`. 
 - Refactored `makesim` into `compute_assessment_sim`.
 - Refactored `run_batch` into `run_assessment_batch`.
 - Make concrete type `PeriodVector` public.
-- Make concrete type `ResampleExtendedSVM` public.
+- Removed `ResampleSBB`, `ResampleGSBB` and `ResampleGSBBMod`.
+- Removed `CrossEvalConfig` type and methods.
 
 ## [0.2.1] - 2025-09
 ### Fixed

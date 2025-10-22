@@ -1,9 +1,9 @@
-## Definitions to obtain an inflation parameter 
+## Definitions to obtain an inflation parameter
 
 """
 Abstract type to represent inflation parameters
 """
-abstract type AbstractInflationParameter{F <: InflationFunction, R <: ResampleFunction, T<: TrendFunction} end 
+abstract type AbstractInflationParameter{F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction} end
 
 """
 Concrete type to represent an inflation parameter computed with the
@@ -25,23 +25,24 @@ function (param::AbstractInflationParameter)(cs::CountryStructure)
     # Compute a CountryStructure with parametric (average) data
     param_data = paramfn(cs)
     # Apply the trend
-    trended_data = param.trendfn(param_data)    
+    trended_data = param.trendfn(param_data)
     # Apply the inflation function to obtain the parametric trajectory
     traj_infl_param = param.inflfn(trended_data)
 
     # Return the parametric inflation trajectory
-    traj_infl_param
+    return traj_infl_param
 end
 
 # Redefine a Base.show method for InflationParameter
 function Base.show(io::IO, param::AbstractInflationParameter)
     println(io, typeof(param))
-    println(io, "|─> InflationFunction : " * measure_name(param.inflfn) )
-    println(io, "|─> ResampleFunction  : " * method_name(param.resamplefn) )
-    println(io, "|─> TrendFunction     : " * method_name(param.trendfn) )
+    println(io, "↳ InflationFunction : " * measure_name(param.inflfn))
+    println(io, "↳ ResampleFunction  : " * method_name(param.resamplefn))
+    println(io, "↳ TrendFunction     : " * method_name(param.trendfn))
+    return
 end
 
-method_tag(param::InflationParameter) = string("InflParam: [",nameof(param.inflfn),", ",nameof(param.resamplefn),", ",nameof(param.trendfn),"]")
+method_tag(param::InflationParameter) = string("InflParam: [", nameof(param.inflfn), ", ", nameof(param.resamplefn), ", ", nameof(param.trendfn), "]")
 
 """
     DEFAULT_RESAMPLE_FN
@@ -56,7 +57,7 @@ const DEFAULT_RESAMPLE_FN = ResampleScrambleVarMonths()
 
 Defines the default trend function to use in the simulation exercise.
 """
-const DEFAULT_TREND_FN    = TrendRandomWalk()
+const DEFAULT_TREND_FN = TrendRandomWalk()
 
 
 """
@@ -66,11 +67,11 @@ Helper function to obtain the configuration of the inflation parameter given
 by the synthetic base change CPI inflation function, and the default
 resampling method and trend function.
 """
-ParamTotalCPIRebase() = 
+ParamTotalCPIRebase() =
     InflationParameter(InflationTotalRebaseCPI(60), DEFAULT_RESAMPLE_FN, DEFAULT_TREND_FN)
 
 # Function to obtain the parameter with another resampling function and another trend function.
-ParamTotalCPIRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
+ParamTotalCPIRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) =
     InflationParameter(InflationTotalRebaseCPI(60), resamplefn, trendfn)
 
 """
@@ -83,7 +84,7 @@ function.
 ParamTotalCPI() = InflationParameter(InflationTotalCPI(), DEFAULT_RESAMPLE_FN, DEFAULT_TREND_FN)
 
 # Function to obtain the parameter with another resampling function and another trend function.
-ParamTotalCPI(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
+ParamTotalCPI(resamplefn::ResampleFunction, trendfn::TrendFunction) =
     InflationParameter(InflationTotalCPI(), resamplefn, trendfn)
 
 
@@ -94,14 +95,14 @@ Helper function to obtain the configuration of the inflation parameter given
 by the synthetic base change CPI inflation function, and the default
 resampling method and trend function.
 """
-ParamTotalCPILegacyRebase() = 
+ParamTotalCPILegacyRebase() =
     InflationParameter(InflationTotalRebaseCPI(36, 2), ResampleScrambleVarMonths(), DEFAULT_TREND_FN)
 
 # Function to obtain the parameter with another resampling function and another trend function.
-ParamTotalCPILegacyRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
+ParamTotalCPILegacyRebase(resamplefn::ResampleFunction, trendfn::TrendFunction) =
     InflationParameter(InflationTotalRebaseCPI(36, 2), resamplefn, trendfn)
 
-    
+
 """
     ParamWeightedMean()
 
@@ -112,5 +113,5 @@ ParamWeightedMean() = InflationParameter(InflationWeightedMean(), DEFAULT_RESAMP
 
 # Function to obtain the parameter with another resampling function and another
 # trend function.
-ParamWeightedMean(resamplefn::ResampleFunction, trendfn::TrendFunction) = 
+ParamWeightedMean(resamplefn::ResampleFunction, trendfn::TrendFunction) =
     InflationParameter(InflationWeightedMean(), resamplefn, trendfn)

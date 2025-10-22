@@ -33,29 +33,29 @@ module InflationEvalTools
     """
     const DEFAULT_SEED = 314159
 
-
     ## Resampling functions for CPI bases
-    export ResampleExtendedSVM
-    export ResampleScrambleVarMonths
-    export ResampleScrambleTrended
-    export ResampleTrended
-    export get_param_function, method_name, method_tag
     
     # General methods for resampling functions
+    export get_param_function, method_name, method_tag
     include("resample/ResampleFunction.jl")
 
     # Resampling method using selection of the same months of
     # occurrence
+    export ResampleScrambleVarMonths, ResampleExtendedSVM
+    export param_scramblevar_fn
     include("resample/ResampleScrambleVarMonths.jl")
     # Resampling method using selection of the same months of
-    # occurrence (extended version)
+    # occurrence (extended version allows for more periods)
     include("resample/ResampleExtendedSVM.jl")
     # Resampling method using selection of the same months of
     # occurrence with weighted distributions to maintain correlation in
     # the resampling
+    export ResampleScrambleTrended
     include("resample/ResampleScrambleTrended.jl")
     # Similar to the previous one, but with individual parameters per base 
+    export ResampleTrended
     include("resample/ResampleTrended.jl")
+    ## Methods to obtain the population datasets of monthly price changes month-to-month variations
     
     ## Functions for trend application
     export RWTREND
@@ -76,19 +76,19 @@ module InflationEvalTools
     include("config/SimConfig.jl")
     
     ## Functions for trajectory generation
-    export gentrayinfl, pargentrajinfl
-    include("simulate/gentrayinfl.jl")
+    export gentrajinfl, pargentrajinfl
+    include("simulate/gentrajinfl.jl")
     include("simulate/pargentrajinfl.jl") 
     
     ## Functions for evaluation and metrics   
     export dict2config
     export compute_lowlevel_sim, compute_assessment_sim, run_assessment_batch
+    include("simulate/simutils.jl")
     export eval_metrics, combination_metrics
+    include("simulate/metrics.jl")
     export eval_mse_online # Online MSE evaluation function
     export eval_absme_online # Online ABSME evaluation function
     export eval_corr_online # Online CORR evaluation function
-    include("simulate/metrics.jl")
-    include("simulate/simutils.jl")
     include("simulate/eval_mse_online.jl")
     include("simulate/eval_absme_online.jl")
     include("simulate/eval_corr_online.jl")

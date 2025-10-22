@@ -12,7 +12,7 @@ const LOCAL_RNG = StableRNG(0)
 ## Function to generate simulated inflation trajectories
 # This function considers the resampling function as an argument to be able
 # to apply different methodologies in the generation of trajectories, as well as the
-# trend function to apply 
+# trend function to apply
 
 """
     pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
@@ -43,11 +43,13 @@ the simulation. To control the start of the trajectory generation, the
 `rndseed` offset parameter is used, whose default value is the seed
 [`DEFAULT_SEED`](@ref).
 """
-function pargentrajinfl(inflfn::F, resamplefn::R, trendfn::T,
-    csdata::CountryStructure;
-    numreplications=100,
-    rndseed=DEFAULT_SEED,
-    showprogress=true) where {F<:InflationFunction,R<:ResampleFunction,T<:TrendFunction}
+function pargentrajinfl(
+        inflfn::F, resamplefn::R, trendfn::T,
+        csdata::CountryStructure;
+        numreplications = 100,
+        rndseed = DEFAULT_SEED,
+        showprogress = true
+    ) where {F <: InflationFunction, R <: ResampleFunction, T <: TrendFunction}
 
     # Output cube of inflation trajectories
     periods = infl_periods(csdata)
@@ -55,7 +57,7 @@ function pargentrajinfl(inflfn::F, resamplefn::R, trendfn::T,
     traj_infl = SharedArray{eltype(csdata)}(periods, n_measures, numreplications)
 
     # Variables for progress control
-    progress = Progress(numreplications, enabled=showprogress)
+    progress = Progress(numreplications, enabled = showprogress)
     channel = RemoteChannel(() -> Channel{Bool}(numreplications), 1)
 
     @sync begin
@@ -83,5 +85,5 @@ function pargentrajinfl(inflfn::F, resamplefn::R, trendfn::T,
     end
 
     # Return the trajectories
-    sdata(traj_infl)
+    return sdata(traj_infl)
 end
