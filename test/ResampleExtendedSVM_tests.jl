@@ -17,34 +17,37 @@ CPIDataGT.load_data()
     chekingMembership = (x::Vector, y::Vector) -> x .∈ y
 
     # I think there is only one basic expenditure that needs to be checked.
-    # If you see zeros in the result, it means that there are no common elements 
+    # If you see zeros in the result, it means that there are no common elements
     # from one basic expense in the others.
     # Check the Januaries in CPI base 2000
-    result = mapreduce(vcat,Iterators.product(1:12, 1:12)) do (i,j)
-        i == j ? 0 : 
-                chekingMembership(
-                    resample_extended_data[1].v[i:12:end, 1], 
-                    [GTDATA23[1].v[j:12:end, 1]])
+    result = mapreduce(vcat, Iterators.product(1:12, 1:12)) do (i, j)
+        i == j ? 0 :
+            chekingMembership(
+                resample_extended_data[1].v[i:12:end, 1],
+                [GTDATA23[1].v[j:12:end, 1]]
+            )
     end
 
     @test sum(result) == 0 # there ar no common elements between months
 
     # Check the Januaries in CPI base 2010
-    result = mapreduce(vcat,Iterators.product(1:12, 1:12)) do (i,j)
-        i == j ? 0 : 
-                chekingMembership(
-                    resample_extended_data[2].v[i:12:end, 1], 
-                    [GTDATA23[2].v[j:12:end, 1]])
+    result = mapreduce(vcat, Iterators.product(1:12, 1:12)) do (i, j)
+        i == j ? 0 :
+            chekingMembership(
+                resample_extended_data[2].v[i:12:end, 1],
+                [GTDATA23[2].v[j:12:end, 1]]
+            )
     end
 
     @test sum(result) == 0 # there ar no common elements between months
 
     # Check the Januaries in CPI base 2023
-    result = mapreduce(vcat,Iterators.product(1:12, 1:12)) do (i,j)
-        i == j ? 0 : 
-                chekingMembership(
-                    resample_extended_data[3].v[i:12:end, 1], 
-                    [GTDATA23[3].v[j:12:end, 1]])
+    result = mapreduce(vcat, Iterators.product(1:12, 1:12)) do (i, j)
+        i == j ? 0 :
+            chekingMembership(
+                resample_extended_data[3].v[i:12:end, 1],
+                [GTDATA23[3].v[j:12:end, 1]]
+            )
     end
 
     @test sum(result) == 0 # there ar no common elements between months
@@ -58,7 +61,7 @@ end
 
     @test size(resample_extended_data[1].v, 1) == 150
     @test size(resample_extended_data[2].v, 1) == 150
-    @test size(resample_extended_data[3].v, 1) == 150        
+    @test size(resample_extended_data[3].v, 1) == 150
 
 end
 
@@ -68,5 +71,8 @@ end
     resample_extended_data = resampleExtfn(GT00)
 
     @test isa(resample_extended_data, VarCPIBase)
- 
+
 end
+
+## Add a testset for computing the population dataset with extended VarCPIBase objects
+# to-do
