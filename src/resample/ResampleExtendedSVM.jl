@@ -47,7 +47,7 @@ function (resamplefn::ResampleExtendedSVM)(cs::CountryStructure, rng = Random.GL
 
 end
 
-function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, extension_periods::Int = resamplefn.extension_periods, rng = Random.GLOBAL_RNG)
+function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, extension_periods::Int = first(resamplefn.extension_periods), rng = Random.GLOBAL_RNG)
     # Resample the matrix of monthly price changes of the VarCPIBase
     v_boot = resamplefn(base.v, extension_periods, rng)
     # Extend the dates
