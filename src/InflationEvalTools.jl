@@ -21,6 +21,7 @@ using JLD2: JLD2, load
 using JuMP: JuMP, @constraint, @constraints, @objective, @variable, Model,
     optimize!, set_silent
 using ProgressMeter: ProgressMeter, @showprogress, Progress, next!
+using Random: AbstractRNG
 using Reexport: Reexport
 using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG

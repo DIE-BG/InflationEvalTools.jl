@@ -3,6 +3,7 @@
 #   ----------------------------------------------------------------------------
 using InflationEvalTools
 using Test
+using CPIDataBase: index_dates
 using CPIDataGT
 using Distributions: pdf, Normal
 using Statistics: mean, std
@@ -47,10 +48,9 @@ scramblevar_sampler = ResampleScrambleVarMonths()
 #   Test ResampleMixture functionality
 #   ----------------------------------------------------------------------------
 
-# @testset "ResampleMixture" begin
+@testset "ResampleMixture tests" begin
 
-
-    @testset "Constructor and basic properties" begin
+    @testset "ResampleMixture: Constructor and basic properties" begin
         # Create mixture sampler
         mixture_sampler = ResampleMixture([identity_sampler, scramblevar_sampler, synthetic_sampler])
 
@@ -63,14 +63,14 @@ scramblevar_sampler = ResampleScrambleVarMonths()
     end
 
 
-    @testset "Validation" begin
+    @testset "ResampleMixture: Validation" begin
         # Should fail with wrong number of samplers
         @test_throws ErrorException ResampleMixture([identity_sampler])(GTDATA_test)
         @test_throws ErrorException ResampleMixture([identity_sampler, scramblevar_sampler])(GTDATA_test)
     end
 
 
-    @testset "Resampling CountryStructure" begin
+    @testset "ResampleMixture: Resampling CountryStructure" begin
         mixture_sampler = ResampleMixture([identity_sampler, scramblevar_sampler, synthetic_sampler])
 
         # Test with default RNG
@@ -86,6 +86,10 @@ scramblevar_sampler = ResampleScrambleVarMonths()
         # Third base should be resampled (synthetic sampler)
         @test resampled_cs.base[3] !== GTDATA_test.base[3]
 
+        # Check dates
+        @test length(index_dates(resampled_cs)) == periods(resampled_cs)
+        @test all(map(base -> issorted(base.dates), resampled_cs.base))
+
         # Test with specific RNG
         rng = Random.MersenneTwister(1234)
         resampled_cs_seeded = mixture_sampler(GTDATA_test, rng)
@@ -93,7 +97,7 @@ scramblevar_sampler = ResampleScrambleVarMonths()
     end
 
 
-    @testset "Resampling VarCPIBase" begin
+    @testset "ResampleMixture: Resampling VarCPIBase" begin
         mixture_sampler = ResampleMixture([identity_sampler, synthetic_sampler])
 
         # Should use first sampler (identity) when applied to VarCPIBase
@@ -107,7 +111,8 @@ scramblevar_sampler = ResampleScrambleVarMonths()
     end
 
 
-    @testset "Parameter functions" begin
+    @testset "ResampleMixture: Parameter functions" begin
+        synthetic_sampler = ResampleSynthetic(GT23_test, matching_array)
         mixture_sampler = ResampleMixture([identity_sampler, scramblevar_sampler, synthetic_sampler])
         param_fn = get_param_function(mixture_sampler)
 
@@ -120,17 +125,20 @@ scramblevar_sampler = ResampleScrambleVarMonths()
         @test param_cs.base[1] === GTDATA_test.base[1]
 
         # Second base should be the population data from the scramblevar sampler
-        pop_vmat_scramble = InflationEvalTools.param_scramblevar_fn(GTDATA_test.base[2])
+        pop_varbase_scramble = InflationEvalTools.param_scramblevar_fn(GTDATA_test.base[2])
         @test param_cs.base[2] !== GTDATA_test.base[2]
-        @test param_cs.base[2].v == pop_vmat_scramble.v
+        @test param_cs.base[2].v == pop_varbase_scramble.v
         @test periods(param_cs.base[2]) == periods(GTDATA_test.base[2])
 
         # Third base should be the population data from the synthetic sampler
         pop_vmat_synthetic_fn = get_param_function(synthetic_sampler)
-        pop_vmat_synthetic = pop_vmat_synthetic_fn(GTDATA_test.base[3])
+        pop_varbase_synthetic = pop_vmat_synthetic_fn(GTDATA_test.base[3])
         @test param_cs.base[3] !== GTDATA_test.base[3]      # Not equal to the actual data
-        @test param_cs.base[3].v == pop_vmat_synthetic.v     # Equal to the population data
+        @test param_cs.base[3].v == pop_varbase_synthetic.v     # Equal to the population data
         @test periods(param_cs.base[3]) == periods(GTDATA_test.base[3])
+        # Check dates
+        @test length(index_dates(param_cs)) == periods(param_cs)
+        @test all(map(base -> issorted(base.dates), param_cs.base))
 
         # Test parameter function validation
         @test_throws ErrorException param_fn(GTDATA24)
@@ -138,10 +146,10 @@ scramblevar_sampler = ResampleScrambleVarMonths()
 
 
     # Test the ResampleMixture works well when extending some of the VarCPIBase objects through the samplers
-    @testset "Extension of VarCPIBase objects" begin 
-     
+    @testset "ResampleMixture: Extension of VarCPIBase objects" begin
+
         # Last resampler samples more periods
-        synthetic_sampler = ResampleSynthetic(GT23_test, matching_array, 12*5)
+        synthetic_sampler = ResampleSynthetic(GT23_test, matching_array, 12 * 5)
         mixture_sampler = ResampleMixture([identity_sampler, scramblevar_sampler, synthetic_sampler])
         resampled_cs = mixture_sampler(GTDATA_test)
 
@@ -155,11 +163,23 @@ scramblevar_sampler = ResampleScrambleVarMonths()
         @test resampled_cs.base[3] !== GTDATA_test.base[3]
         @test size(resampled_cs.base[3].v, 1) > size(GTDATA_test.base[3].v, 1)
         @test size(resampled_cs.base[3].v, 2) == size(GTDATA_test.base[3].v, 2)
+        # Check dates
+        @test length(index_dates(resampled_cs)) == periods(resampled_cs)
+        @test all(map(base -> issorted(base.dates), resampled_cs.base))
 
-        ## Add some tests for ResampleExtendedSVM...
-        # to-do 
+        ## Some tests combining with ResampleExtendedSVM
+        svmext_sampler = ResampleExtendedSVM(180)
+        mixture_sampler = ResampleMixture([identity_sampler, svmext_sampler, synthetic_sampler])
+        resampled_cs = mixture_sampler(GTDATA_test)
+
+        # Check extension of periods
+        @test periods(resampled_cs.base[2]) == 180
+        @test periods(resampled_cs.base[3]) == 12 * 5
+
+        # Check dates
+        @test length(index_dates(resampled_cs)) == periods(resampled_cs)
+        @test all(map(base -> issorted(base.dates), resampled_cs.base))
 
     end
 
-
-# end
+end

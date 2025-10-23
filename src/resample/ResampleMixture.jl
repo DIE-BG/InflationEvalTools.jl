@@ -62,12 +62,15 @@ function (resamplefn::ResampleMixture)(cs::CountryStructure, rng::AbstractRNG = 
     _validate_mixture_params(cs, resamplefn.resampling_functions)
 
     # Apply each resampling function to its corresponding base
-    base_boot = map(zip(cs.base, resamplefn.resampling_functions)) do (base, fn)
+    bootstrap_varbases = map(zip(cs.base, resamplefn.resampling_functions)) do (base, fn)
         fn(base, rng)
     end
 
     # Return new CountryStructure with resampled bases
-    return typeof(cs)((base_boot...,))
+    cstype = getunionalltype(cs)
+    bootstrap_cs = cstype(bootstrap_varbases...)
+    bootstrap_cs = _fix_countrystructure_dates(bootstrap_cs)
+    return bootstrap_cs
 end
 
 # Implement resampling for VarCPIBase using the first resampling function
@@ -95,13 +98,15 @@ function get_param_function(resamplefn::ResampleMixture)
         _validate_mixture_params(cs, param_functions)
 
         # Apply each parameter function to its corresponding base
-        param_bases = map(zip(cs.base, param_functions)) do (base, fn)
+        population_varbases = map(zip(cs.base, param_functions)) do (base, fn)
             fn(base)
         end
 
-        # Return new CountryStructure with parameter bases
-        param_bases_tuple = (param_bases...,)
-        return typeof(cs)(param_bases_tuple)
+        # Return new CountryStructure with population bases
+        cstype = getunionalltype(cs)
+        population_cs = cstype(population_varbases...)
+        population_cs = _fix_countrystructure_dates(population_cs)
+        return population_cs
     end
 
     return param_mixture_fn
