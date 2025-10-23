@@ -65,6 +65,7 @@ end
 method_name(resamplefn::ResampleExtendedSVM) = "Extended IID bootstrap by months of occurrence"
 method_tag(resamplefn::ResampleExtendedSVM) = "ESVM"
 
+## Population dataset function 
 
 # Similar to param_scramblevar_fn, but with extension for dates
 function param_scramblevar_ext_fn(base::VarCPIBase, sample_periods::Int = periods(base))
