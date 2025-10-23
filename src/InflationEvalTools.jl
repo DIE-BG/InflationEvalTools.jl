@@ -43,9 +43,10 @@ include("resample/ResampleFunction.jl")
 
 # Resampling method using selection of the same months of
 # occurrence
-export ResampleScrambleVarMonths
+export ResampleScrambleVarMonths, ResampleExtendedSVM
 export param_scramblevar_fn
 include("resample/ResampleScrambleVarMonths.jl")
+include("resample/ResampleExtendedSVM.jl")
 # Resampling method using selection of the same months of
 # occurrence with weighted distributions to maintain correlation in
 # the resampling
