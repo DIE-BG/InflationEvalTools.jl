@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
  
+## [0.3.1] - 2025-10
+### Changed
+- `run_assessment_batch` now checks if the results file exists already and skips the simulation configuration by default. Use the parameter `recompute=true` to force recomputing and saving the results.
+
 ## [0.3.0] - 2025-10
 ### Added 
 - Type `CPIVarietyMatchDistribution` to resample as in the B-TIMA extension methodology. It uses two arrays of monthly price changes, a prior and an actual empirical distribution. It can be configured to sample from the prior distribution, the actual  distribution or a synthtetic distribution that gives different weights according to the mean of the actual observations.

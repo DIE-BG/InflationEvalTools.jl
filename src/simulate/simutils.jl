@@ -2,10 +2,12 @@
 
 # This function can evaluate only one inflation measure
 """
-    compute_lowlevel_sim(data::CountryStructure, config::SimConfig;
-            rndseed = DEFAULT_SEED,
-            shortmetrics = false,
-            showprogress = false) -> (Dict, Array{<:AbstractFloat, 3})
+    compute_lowlevel_sim(
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        shortmetrics = false,
+        showprogress = false,
+    ) -> (Dict, Array{<:AbstractFloat, 3})
 
 Generate the parametric (population) trajectory, simulated inflation
 trajectories and evaluation metrics using a [`SimConfig`](@ref).
@@ -74,11 +76,13 @@ end
 # Function to obtain results dictionary and trajectories from a
 # `SimConfig` (and to package metadata + metrics for storage)
 """
-        compute_assessment_sim(data::CountryStructure, config::SimConfig;
-                        rndseed = DEFAULT_SEED,
-                        savetrajectories = false,
-                        shortmetrics = false,
-                        showprogress = false) -> Dict
+    compute_assessment_sim(
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = false,
+        showprogress = false
+    ) -> Dict
 
 Run the low‑level simulation (`compute_lowlevel_sim`), collect evaluation
 metrics and return a results dictionary that merges the `SimConfig`
@@ -130,40 +134,49 @@ end
 
 # Function to run a batch of simulations
 """
-        run_assessment_batch(data::CountryStructure, dict_list_params, savepath::AbstractString;
-                rndseed = DEFAULT_SEED,
-                savetrajectories = false,
-                shortmetrics = false,
-                showprogress = true)
+    run_assessment_batch(
+        data::CountryStructure, dict_list_params, savepath::AbstractString;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = false,
+        showprogress = true,
+        recompute = false,
+    )
 
 Generate a batch of simulation assessments from a list (or iterable) of
 parameter dictionaries. Each element in `dict_list_params` is converted to a
 `SimConfig` with `dict2config` and evaluated with
 `compute_assessment_sim`. Results are saved to `savepath` using
-`DrWatson.savename` so they can later be read by `collect_results`.
+`DrWatson.savename` so they can later be read by `collect_results`. 
 
-Arguments
+- Recomputation of existing result files is skipped by default. To
+    force recomputation, set `recompute=true`.
+
+# Arguments
 - `dict_list_params`: iterable of parameter dictionaries (usually created by
     expanding vectors of parameter values).
 - `savepath`: directory where per‑run result files will be written.
 
-Keyword arguments
+# Keyword arguments
 - `savetrajectories`: save trajectories within each result file (default
     `false`).
 - `shortmetrics`: compute reduced metrics when true (default `false`).
 - `showprogress`: show progress indicator during generation (default
     `true`).
+- `recompute`: when true, recompute existing result files even if they exist 
+    on disk (default `false`).
 
-Example
+# Example
 
-```julia-repl
-julia> config_dict = Dict(
-        :inflfn => InflationPercentileWeighted.(50:80),
-        :resamplefn => resamplefn,
-        :trendfn => trendfn,
-        :paramfn => paramfn,
-        :traindate => Date(2019, 12),
-        :nsim => 1000) |> dict_list
+```julia
+config_dict = Dict(
+    :inflfn => InflationPercentileWeighted.(50:80),
+    :resamplefn => resamplefn,
+    :trendfn => trendfn,
+    :paramfn => paramfn,
+    :traindate => Date(2019, 12),
+    :evalperiods => (CompletePeriod(),),
+    :nsim => 1000) |> dict_list
 
 run_assessment_batch(gtdata_eval, config_dict, savepath)
 ```
@@ -177,12 +190,24 @@ function run_assessment_batch(
     savetrajectories=false,
     shortmetrics=false,
     showprogress=true,
+    recompute=false,
 )
 
     # Run batch of simulations
+    N = length(dict_list_params)
     for (i, dict_params) in enumerate(dict_list_params)
-        @info "Running simulation $i of $(length(dict_list_params))..."
+        # Convert dictionary to SimConfig
         config = dict2config(dict_params)
+        # Define filename and filepath from the configuration
+        filename = DrWatson.savename(config, "jld2")
+        filepath = joinpath(savepath, filename)
+        # Check if file exists and skip if recompute is false
+        if isfile(filepath) && !recompute
+            @info "Skipping simulation $i/$N: results file already exists at" path=filename
+            continue
+        end
+
+        @info "Running simulation $i/$N..."
         results = compute_assessment_sim(
             data, config;
             rndseed,
@@ -193,8 +218,7 @@ function run_assessment_batch(
 
         # Save the results
         # Rsults intended for DrWatson.collect_results
-        filename = DrWatson.savename(config, "jld2")
-        wsave(joinpath(savepath, filename), tostringdict(results))
+        wsave(filepath, tostringdict(results))
     end
     return
 end
