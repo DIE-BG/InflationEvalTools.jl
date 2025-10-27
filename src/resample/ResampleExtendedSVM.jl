@@ -83,7 +83,7 @@ end
 
 function get_param_function(resamplefn::ResampleExtendedSVM)
     # Define a function with the sample periods embedded to obtain the
-    # population CPI datasets
+    # population CPI datasets from a CountryStructure 
     function param_scramblevar_ext_closure_fn(cs::CountryStructure)
         num_bases = length(cs.base)
         num_ext_periods = length(resamplefn.extension_periods)
@@ -103,6 +103,15 @@ function get_param_function(resamplefn::ResampleExtendedSVM)
         population_cs = cstype(population_varbases...)
         population_cs = _fix_countrystructure_dates(population_cs)
         return population_cs
+    end
+
+    # Population data for a VarCPIBase. Added for completeness, when calling a
+    # ResampleExtendedSVM within a ResampleMixture, the ResampleMixture will
+    # call this function
+    function param_scramblevar_ext_closure_fn(base::VarCPIBase)
+        # If the first entry of the extension_periods when asked for the population data of a VarCPIBase
+        sample_periods = first(resamplefn.extension_periods)
+        return param_scramblevar_ext_fn(base, sample_periods)
     end
 
     return param_scramblevar_ext_closure_fn
