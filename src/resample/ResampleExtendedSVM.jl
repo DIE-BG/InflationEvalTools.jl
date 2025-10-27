@@ -24,7 +24,7 @@ end
 
 # Define how to resample matrices with time series in the columns.
 # Uses the internal function `scramblevar`.
-function (resamplefn::ResampleExtendedSVM)(cs::CountryStructure, rng = Random.GLOBAL_RNG)
+function (resamplefn::ResampleExtendedSVM)(cs::CountryStructure, rng::AbstractRNG = Random.GLOBAL_RNG)
 
     if isa(resamplefn.extension_periods, Vector) &&
             length(resamplefn.extension_periods) != length(cs.base)
@@ -41,15 +41,19 @@ function (resamplefn::ResampleExtendedSVM)(cs::CountryStructure, rng = Random.GL
 
     # Obtain resampled bases
     ps = (periods...,)
-    base_boot = map((b, extension_periods) -> resamplefn(b, extension_periods, rng), cs.base, ps)
+    bootstrap_varbases = map((b, extension_periods) -> resamplefn(b, rng, extension_periods), cs.base, ps)
+
     # Return new CountryStructure
-    return typeof(cs)(base_boot)
+    cstype = getunionalltype(cs)
+    bootstrap_cs = cstype(bootstrap_varbases...)
+    bootstrap_cs = _fix_countrystructure_dates(bootstrap_cs)
+    return bootstrap_cs
 
 end
 
-function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, extension_periods::Int = first(resamplefn.extension_periods), rng = Random.GLOBAL_RNG)
+function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, rng::AbstractRNG = Random.GLOBAL_RNG, extension_periods::Int = first(resamplefn.extension_periods))
     # Resample the matrix of monthly price changes of the VarCPIBase
-    v_boot = resamplefn(base.v, extension_periods, rng)
+    v_boot = resamplefn(base.v, rng, extension_periods)
     # Extend the dates
     startdate = base.dates[1]
     dates = startdate:Month(1):Date(startdate + Month(extension_periods - 1))
@@ -57,7 +61,7 @@ function (resamplefn::ResampleExtendedSVM)(base::VarCPIBase, extension_periods::
     return VarCPIBase(v_boot, base.w, dates, base.baseindex)
 end
 
-function (resamplefn::ResampleExtendedSVM)(vmat::AbstractMatrix, extension_periods::Int, rng = Random.GLOBAL_RNG)
+function (resamplefn::ResampleExtendedSVM)(vmat::AbstractMatrix, rng::AbstractRNG = Random.GLOBAL_RNG, extension_periods::Int = first(resamplefn.extension_periods))
     return scramblevar(vmat, rng, extension_periods)
 end
 
@@ -65,7 +69,7 @@ end
 method_name(resamplefn::ResampleExtendedSVM) = "Extended IID bootstrap by months of occurrence"
 method_tag(resamplefn::ResampleExtendedSVM) = "ESVM"
 
-## Population dataset function 
+## Population dataset function
 
 # Similar to param_scramblevar_fn, but with extension for dates
 function param_scramblevar_ext_fn(base::VarCPIBase, sample_periods::Int = periods(base))
@@ -95,8 +99,28 @@ function get_param_function(resamplefn::ResampleExtendedSVM)
         # Compute the population datasets using the number of sample periods
         # specified in the sampler
         population_varbases = map(param_scramblevar_ext_fn, cs.base, sample_periods)
-        return getunionalltype(cs)(population_varbases...)
+        cstype = getunionalltype(cs)
+        population_cs = cstype(population_varbases...)
+        population_cs = _fix_countrystructure_dates(population_cs)
+        return population_cs
     end
 
     return param_scramblevar_ext_closure_fn
+end
+
+
+## Helper to fix a CountryStructure's VarCPIBase dates
+function _fix_countrystructure_dates(cs::CountryStructure)
+    nperiods = periods(cs) 
+    start_date = first(CPIDataBase.index_dates(cs))
+    num_varbase_periods = map(periods, cs.base)
+    # Compute new start and end dates
+    new_end_dates = map(nperiods -> start_date + Month(nperiods-1), cumsum(num_varbase_periods))
+    new_start_dates = map((date, nperiods) -> date - Month(nperiods-1), new_end_dates, num_varbase_periods)
+    # Create a new CountryStructure
+    cstype = getunionalltype(cs)
+    varbases = map(cs.base, new_start_dates, new_end_dates) do base, start_date, end_date
+        return VarCPIBase( base.v, base.w, start_date:Month(1):end_date, base.baseindex)
+    end
+    return cstype(varbases)
 end

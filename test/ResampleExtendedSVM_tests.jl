@@ -1,5 +1,6 @@
 using Dates, CPIDataBase, InflationFunctions, InflationEvalTools
 using CPIDataBase.TestHelpers
+using CPIDataBase: index_dates
 using CPIDataGT
 using Test
 using Random
@@ -8,7 +9,7 @@ using Random
 CPIDataGT.load_data()
 test_GTDATA23 = GTDATA23
 
-@testset "Test of ResampleExtendedSVM" begin
+@testset "ResampleExtendedSVM tests" begin
 
     # Testing ResampleExtendedSVM
     svmext_sampler = ResampleExtendedSVM([150, 180, 50])
@@ -63,6 +64,9 @@ end
     @test size(resample_extended_data[1].v, 1) == 150
     @test size(resample_extended_data[2].v, 1) == 150
     @test size(resample_extended_data[3].v, 1) == 150
+    # Check dates
+    @test periods(resample_extended_data) == length(index_dates(resample_extended_data))
+    @test all(map(base -> issorted(base.dates), resample_extended_data.base))
 
 end
 
@@ -72,16 +76,18 @@ end
     resample_extended_data = svmext_sampler(GT00)
 
     @test isa(resample_extended_data, VarCPIBase)
+    # Check dates
+    @test periods(resample_extended_data) == length(index_dates(resample_extended_data))
 
 end
 
 ## Add a testset for computing the population dataset with extended VarCPIBase objects
-@testset "Population datasets with extended VarCPIBase objects" begin 
+@testset "Population datasets with extended VarCPIBase objects" begin
 
     svmext_sampler = ResampleExtendedSVM(150)
     param_fn = get_param_function(svmext_sampler)
     population_dataset = param_fn(test_GTDATA23)
-    # Test 
+    # Test
     @test all(map(periods, population_dataset.base) .== 150)
 
     svmext_sampler = ResampleExtendedSVM([150, 180, 50])
@@ -89,4 +95,3 @@ end
     population_dataset = param_fn(test_GTDATA23)
     @test all(map(periods, population_dataset.base) .== svmext_sampler.extension_periods)
 end
-

@@ -14,9 +14,23 @@ Resampling functions for CPI bases and related utilities.
 ResampleScrambleVarMonths
 ResampleScrambleTrended
 ResampleTrended
+ResampleIdentity
 get_param_function
 method_name
 method_tag
+```
+
+## B-TIMA Extension 
+
+The B-TIMA extension procedure uses the following functions: 
+
+```@docs
+CPIVarietyMatchDistribution
+ResampleSynthetic
+synthetic_reweighing
+prior_reweighing
+actual_reweighing.
+ResampleMixture
 ```
 
 ## Trend Functions
