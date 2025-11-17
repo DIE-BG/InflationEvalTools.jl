@@ -25,6 +25,8 @@ using Random: AbstractRNG
 using Reexport: Reexport
 using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG
+using LinearAlgebra: LinearAlgebra, mul!
+using OnlineStats: OnlineStats
 
 
 ## Default configuration of the seed for the simulation process

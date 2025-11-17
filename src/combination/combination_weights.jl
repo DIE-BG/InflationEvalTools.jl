@@ -42,7 +42,7 @@ function average_mats(tray_infl, tray_infl_param)
     XᵀX_temp = zeros(eltype(tray_infl), n, n)
     for j in 1:K
         tray = @view tray_infl[:, :, j]
-        mul!(XᵀX_temp, tray', tray)
+        LinearAlgebra.mul!(XᵀX_temp, tray', tray)
         XᵀX_temp ./= T
         XᵀX += XᵀX_temp
     end
@@ -54,7 +54,7 @@ function average_mats(tray_infl, tray_infl_param)
     Xᵀπ_temp = zeros(eltype(tray_infl), n)
     for j in 1:K
         tray = @view tray_infl[:, :, j]
-        mul!(Xᵀπ_temp, tray', tray_infl_param)
+        LinearAlgebra.mul!(Xᵀπ_temp, tray', tray_infl_param)
         Xᵀπ_temp ./= T
         Xᵀπ += Xᵀπ_temp
     end
