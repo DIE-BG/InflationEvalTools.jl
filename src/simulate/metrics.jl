@@ -35,9 +35,14 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="")
     rmse = mean(sqrt, mse_dist)
     mae = mean(abs, err_dist)
     me = mean(err_dist)
+
+    rmse_std_error = std(sqrt.(mse_dist), mean=rmse) / sqrt(K)
+    mae_std_error = std(mean(abs, err_dist, dims=2), mean=mae) / sqrt(K)
+    me_std_error = std(mean(err_dist, dims=2), mean=me) / sqrt(K)
     
     # Huber loss ~ combines the properties of MSE and MAE
     huber = mean(huber_loss, err_dist)
+    huber_std_error = std(mean(huber_loss, err_dist, dims=2), mean=huber) / sqrt(T * K)
 
     # Correlation 
     corr_dist = first.(cor.(eachslice(tray_infl, dims=3), Ref(tray_infl_pob)))
