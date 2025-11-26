@@ -83,10 +83,12 @@ include("param/InflationParameter.jl")
 
 # Types for simulation configuration
 export AbstractConfig, SimConfig
+export SimDynamicConfig
 export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
 export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
 include("config/EvalPeriod.jl")
 include("config/SimConfig.jl")
+include("config/SimDynamicConfig.jl")
 
 ## Functions for trajectory generation
 export gentrajinfl, pargentrajinfl
@@ -97,6 +99,7 @@ include("simulate/pargentrajinfl.jl")
 export dict2config
 export compute_lowlevel_sim, compute_assessment_sim, run_assessment_batch
 include("simulate/simutils.jl")
+include("simulate/simutils_dynamic.jl")
 export eval_metrics, combination_metrics
 include("simulate/metrics.jl")
 export eval_mse_online # Online MSE evaluation function
