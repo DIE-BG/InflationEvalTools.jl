@@ -73,8 +73,9 @@ include("resample/ResampleMixture.jl")
 export RWTREND
 include("trend/RWTREND.jl")
 
-export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity
+export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity, TrendDynamicRW
 include("trend/TrendFunction.jl")
+include("trend/TrendDynamicRW.jl")
 
 export InflationParameter, ParamTotalCPIRebase, ParamTotalCPI, ParamWeightedMean
 export ParamTotalCPILegacyRebase # evaluation parameter 2019

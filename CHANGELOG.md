@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
  
+## [0.4.0] - 2025-11
+### Added
+- New trend function `TrendDynamicRW` that builds an autoregressive process (or, optionally, a random walk process) to estimate metrics without conditioning to specific realizations of the stochastic process.
+
 ## [0.3.1] - 2025-10
 ### Changed
 - `run_assessment_batch` now checks if the results file exists already and skips the simulation configuration by default. Use the parameter `recompute=true` to force recomputing and saving the results.
