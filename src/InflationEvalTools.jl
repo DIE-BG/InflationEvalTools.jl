@@ -13,7 +13,7 @@ using Chain: Chain, @chain
 using Dates: Dates, Date, DateFormat, Month, TimeType, month
 using Distributed: Distributed, @distributed, RemoteChannel
 using Distributions: Distributions, Normal, cor, mean, pdf, std
-using DrWatson: DrWatson, savename, struct2dict, tostringdict, wsave
+using DrWatson: DrWatson, savename, struct2dict, tostringdict, wsave, @dict
 using InflationFunctions: InflationFunctions, InflationTotalRebaseCPI,
     InflationWeightedMean
 using Ipopt: Ipopt
@@ -21,7 +21,7 @@ using JLD2: JLD2, load
 using JuMP: JuMP, @constraint, @constraints, @objective, @variable, Model,
     optimize!, set_silent
 using ProgressMeter: ProgressMeter, @showprogress, Progress, next!
-using Random: AbstractRNG
+using Random: AbstractRNG, Xoshiro
 using Reexport: Reexport
 using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG

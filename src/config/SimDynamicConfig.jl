@@ -1,7 +1,7 @@
 # SimDynamicConfig.jl - Definition of SimDynamicConfig for dynamic trend simulations
 
 """
-    SimDynamicConfig{F, R}
+    SimDynamicConfig{F, R, T}
 
 Configuration type for simulations using the dynamic random walk trend (`TrendDynamicRW`).
 This configuration is similar to `SimConfig` but does not include a `trendfn` field,
@@ -10,6 +10,7 @@ as it is implicitly designed for the dynamic trend.
 It contains:
 - `inflfn`: Inflation function
 - `resamplefn`: Resampling function
+- `trendfn`: Function that receives an `AbstractRNG` and returns a trend function.
 - `paramfn`: Parametric inflation function (for population trend)
 - `nsim`: Number of simulations per fold
 - `nfolds`: Number of folds (trend instantiations)
@@ -18,14 +19,16 @@ It contains:
 
 ## Example
 ```julia
-config = SimDynamicConfig(inflfn, resamplefn, paramfn, 1000, 10, Date(2019,12), CompletePeriod())
+config = SimDynamicConfig(inflfn, resamplefn, trend_constructor, paramfn, 1000, 10, Date(2019,12), CompletePeriod())
 ```
 """
-Base.@kwdef struct SimDynamicConfig{F, R}
+Base.@kwdef struct SimDynamicConfig{F, R, T<:Function}
     # Inflation function
     inflfn::F
     # Resampling function
     resamplefn::R
+    # Trend constructor function
+    trendfn::T
     # Parametric inflation function 
     paramfn::InflationFunction
     # Number of simulations per fold
@@ -69,7 +72,8 @@ function DrWatson.savename(prefix::String, config::SimDynamicConfig, suffix::Str
         measure_tag(config.paramfn), # Parametric inflation function for evaluation
         config.nsim >= 1000 ? string(config.nsim ÷ 1000) * "k" : string(config.nsim), # Number of simulations
         string(config.nfolds), # Number of folds
-        Dates.format(config.traindate, COMPACT_DATE_FORMAT)
+        Dates.format(config.traindate, COMPACT_DATE_FORMAT),
+        period_tag(config.evalperiod), # Evaluation period
     ], DEFAULT_CONNECTOR) * _suffix 
 end
 
@@ -79,11 +83,11 @@ end
 Constructor to create a `SimDynamicConfig` from a dictionary of parameters.
 """
 function SimDynamicConfig(params::Dict)
-    required_keys = (:inflfn, :resamplefn, :paramfn, :nsim, :nfolds, :traindate, :evalperiod)
+    required_keys = (:inflfn, :resamplefn, :trendfn, :paramfn, :nsim, :nfolds, :traindate, :evalperiod)
     # Check that all required keys are present
     if !all(k -> haskey(params, k), required_keys)
         missing_keys = filter(k -> !haskey(params, k), required_keys)
         error("Missing keys in params dictionary for SimDynamicConfig: $(join(missing_keys, ", "))")
     end
-    SimDynamicConfig(params[:inflfn], params[:resamplefn], params[:paramfn], params[:nsim], params[:nfolds], params[:traindate], params[:evalperiod])
+    SimDynamicConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:nfolds], params[:traindate], params[:evalperiod])
 end

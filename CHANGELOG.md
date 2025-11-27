@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
  
 ## [0.4.0] - 2025-11
 ### Added
-- New trend function `TrendDynamicRW` that builds an autoregressive process (or, optionally, a random walk process) to estimate metrics without conditioning to specific realizations of the stochastic process.
+- New trend function `TrendDynamicRW` that builds an autoregressive process (or, optionally, a random walk process) to estimate the asssessment metrics without conditioning to specific realizations of the stochastic process.
+- Added a new simulation configuration `SimDynamicConfig` to handle the upper-level simulation with several random-walk processes. The `compute_lowlevel_sim`, `compute_assessment_sim` and `run_assessment_batch` functions now work for this configuration.
 
 ## [0.3.1] - 2025-10
 ### Changed
