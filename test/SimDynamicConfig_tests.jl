@@ -16,45 +16,54 @@ inflfn = InflationTotalCPI()
 resamplefn = ResampleIdentity()
 paramfn = InflationTotalCPI()
 
-# Trend constructor: returns a TrendDynamicRW
-# We use a simple validation function that is always true
-trend_constructor = rng -> TrendDynamicRW(periods(cst), 0.5, 1.0, x -> true; rng=rng)
+# Create a vector of trends
+nfolds = 2
+trendfns = Vector{TrendDynamicRW}(undef, nfolds)
+for i in 1:nfolds
+    rng = Xoshiro(123 + i)
+    trendfns[i] = TrendDynamicRW(periods(cst), 0.5, 1.0, x -> true; rng = rng)
+end
 
 traindate = Date(2020, 12)
 evalperiod = CompletePeriod()
 nsim = 10
-nfolds = 2
 
 # Test 1: Constructor
 config = SimDynamicConfig(
-    inflfn, 
-    resamplefn, 
-    trend_constructor, 
-    paramfn, 
-    nsim, 
-    nfolds, 
-    traindate, 
+    inflfn,
+    resamplefn,
+    trendfns,
+    paramfn,
+    nsim,
+    traindate,
     evalperiod,
 )
 
 @test config isa SimDynamicConfig
 @test config.nsim == nsim
-@test config.nfolds == nfolds
+@test length(config.trendfns) == nfolds
+@test config.trendfns == trendfns
 
 # Test 2: Constructor from Dict
 params_dict = Dict(
     :inflfn => inflfn,
     :resamplefn => resamplefn,
-    :trendfn => trend_constructor,
+    :trendfns => trendfns,
     :paramfn => paramfn,
     :nsim => nsim,
-    :nfolds => nfolds,
     :traindate => traindate,
     :evalperiod => evalperiod
 )
 config_from_dict = SimDynamicConfig(params_dict)
 @test config_from_dict isa SimDynamicConfig
 @test config_from_dict.nsim == nsim
+@test length(config_from_dict.trendfns) == nfolds
+
+# Config from Dict using dict2config
+config_from_dict = dict2config(params_dict)
+@test config_from_dict isa SimDynamicConfig
+@test config_from_dict.nsim == nsim
+@test length(config_from_dict.trendfns) == nfolds
 
 # Test 3: savename
 # Check that savename generates a string with expected components
@@ -113,18 +122,18 @@ keys_str = string.(keys(assessment_res))
 # Create a temporary directory for results
 mktempdir() do savepath
     dict_list = [params_dict]
-    
+
     run_assessment_batch(
         cst, dict_list, savepath;
         rndseed = 1234,
         shortmetrics = true,
         showprogress = false
     )
-    
+
     # Check if file was created
     filename = DrWatson.savename(config, "jld2")
     @test isfile(joinpath(savepath, filename))
-    
+
     # Load and verify
     loaded_res = DrWatson.load(joinpath(savepath, filename))
     @test loaded_res["measure"] == measure_name(inflfn)

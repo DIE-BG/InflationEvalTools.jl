@@ -157,7 +157,7 @@ end
 
 Generate a batch of simulation assessments from a list (or iterable) of
 parameter dictionaries. Each element in `dict_list_params` is converted to a
-`SimConfig` with `dict2config` and evaluated with
+`SimConfig` or a `SimDynamicConfig` with `dict2config` and evaluated with
 `compute_assessment_sim`. Results are saved to `savepath` using
 `DrWatson.savename` so they can later be read by `collect_results`. 
 
@@ -199,7 +199,6 @@ After the batch completes, use `collect_results(savepath)` to assemble a
 function run_assessment_batch(
         data::CountryStructure, dict_list_params, savepath::AbstractString;
         rndseed = DEFAULT_SEED,
-        trend_rng_type = Xoshiro,
         savetrajectories = false,
         shortmetrics = true,
         showprogress = true,
@@ -210,29 +209,8 @@ function run_assessment_batch(
     # Run batch of simulations
     N = length(dict_list_params)
     for (i, dict_params) in enumerate(dict_list_params)
-        # Check if dynamic or regular config
-        if :nfolds in keys(dict_params) && :evalperiod in keys(dict_params)
-            # Convert dictionary to SimDynamicConfig
-            config = SimDynamicConfig(dict_params)
-            kwargs = (;
-                rndseed,
-                trend_rng_type,
-                shortmetrics,
-                savetrajectories,
-                showprogress,
-                verbose,
-            )
-        else
-            # Convert dictionary to a regular SimConfig
-            config = dict2config(dict_params)
-            kwargs = (;
-                rndseed,
-                shortmetrics,
-                savetrajectories,
-                showprogress,
-                verbose,
-            )
-        end
+        # Convert dictionary to configuration (SimConfig or SimDynamicConfig)
+        config = dict2config(dict_params)
 
         # Define filename and filepath from the configuration
         filename = DrWatson.savename(config, "jld2")
@@ -244,7 +222,14 @@ function run_assessment_batch(
         end
 
         @info "Running simulation $i/$N..."
-        results = compute_assessment_sim(data, config; kwargs...)
+        results = compute_assessment_sim(
+            data, config;
+            rndseed,
+            shortmetrics,
+            savetrajectories,
+            showprogress,
+            verbose
+        )
 
         # Save the results
         # Rsults intended for DrWatson.collect_results

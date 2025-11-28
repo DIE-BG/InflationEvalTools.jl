@@ -4,7 +4,6 @@
     compute_lowlevel_sim(
         data::CountryStructure, config::SimDynamicConfig;
         rndseed = DEFAULT_SEED,
-        trend_rng_type = Xoshiro,
         shortmetrics = false,
         showprogress = false,
     ) -> (Dict, Array{<:AbstractFloat, 3})
@@ -12,9 +11,8 @@
 Generate the parametric (population) trajectory, simulated inflation
 trajectories and evaluation metrics using a [`SimDynamicConfig`](@ref).
 
-This function iterates `config.nfolds` times. In each fold, it calls 
-`config.trendfn(rng)` to instantiate a new trend function (expected to be `TrendDynamicRW`), 
-where `rng` is a random number generator seeded for reproducibility.
+This function iterates `length(config.trendfns)` times. In each fold, it uses 
+`config.trendfns[i]` to get the trend function for that fold.
 It generates `config.nsim` simulations per fold.
 The results are merged:
 - Metrics are collected into vectors (one value per fold).
@@ -26,43 +24,42 @@ Arguments
 
 Keyword arguments
 - `rndseed`: integer seed for the random generator of the simulation trajectories (default = `DEFAULT_SEED`).
-- `trend_rng_type`: type of the random number generator (default = `StableRNG`).
 - `shortmetrics`: when true compute a reduced set of metrics.
 - `showprogress`: show progress bar.
 """
 function compute_lowlevel_sim(
         data::CountryStructure, config::SimDynamicConfig;
         rndseed = DEFAULT_SEED,
-        trend_rng_type = Xoshiro,
         shortmetrics = true,
         showprogress = true,
+        verbose = true,
     )
     # Get data up to the configuration date
     data_eval = data[config.traindate]
 
+    # Get all the trend objects
+    trendfns = config.trendfns
+    nfolds = length(trendfns)
+
     # Initialize containers for results
     # We don't know the exact type of metrics dict values, so we use Any or infer later
-    metrics_list = Vector{Dict}(undef, config.nfolds)
-    traj_list = Vector{Array{Float32, 3}}(undef, config.nfolds)
-    traj_pob_list = Vector{Vector{Float32}}(undef, config.nfolds)
-
-    # Generate all the trend objects
-    rng_trend = trend_rng_type(rndseed)
-    trendfns = [config.trendfn(rng_trend) for _ in 1:config.nfolds]
+    metrics_list = Vector{Dict}(undef, nfolds)
+    traj_list = Vector{Array{Float32, 3}}(undef, nfolds)
+    traj_pob_list = Vector{Vector{Float32}}(undef, nfolds)
 
     # Progress bar
     if showprogress
         p = Progress(
-            config.nfolds, 
-            dt = 0.5, 
+            nfolds,
+            dt = 0.5,
             desc = "Running simulations with different realizations of the trend...",
         )
     end
 
-    for i in 1:config.nfolds
+    for i in 1:nfolds
         # Set seed for this fold to ensure reproducibility and independence
         # We use different seeds for trend generation and simulation
-        sim_seed = rndseed + i + config.nfolds
+        sim_seed = rndseed + i + nfolds
 
         # Get the trend function for this fold
         trendfn = trendfns[i]
@@ -129,7 +126,6 @@ end
     compute_assessment_sim(
         data::CountryStructure, config::SimDynamicConfig;
         rndseed = DEFAULT_SEED,
-        trend_rng_type = Xoshiro,
         savetrajectories = false,
         shortmetrics = false,
         showprogress = false
@@ -140,7 +136,6 @@ Run the low‑level simulation (`compute_lowlevel_sim`) for dynamic configuratio
 function compute_assessment_sim(
         data::CountryStructure, config::SimDynamicConfig;
         rndseed = DEFAULT_SEED,
-        trend_rng_type = Xoshiro,
         savetrajectories = false,
         shortmetrics = true,
         showprogress = true,
@@ -151,15 +146,15 @@ function compute_assessment_sim(
     results = compute_lowlevel_sim(
         data, config;
         rndseed,
-        trend_rng_type,
         shortmetrics,
         showprogress,
+        verbose,
     )
 
     # Merge results
     metrics = _merge_metrics(results[:metrics_list])
     traj_infl_all = cat(results[:traj_list]..., dims = 3)
-    traj_infl_pob_all = cat(results[:traj_pob_list]..., dims=3) # Concatenate population trajectories
+    traj_infl_pob_all = cat(results[:traj_pob_list]..., dims = 3) # Concatenate population trajectories
     trendfns = results[:trendfns]
 
     # Show summary of assessment metrics (e.g. mean RMSE)
@@ -167,12 +162,12 @@ function compute_assessment_sim(
         @info "Assessment metrics (mean over folds):"
         for metric in ["rmse", "me", "corr"]
             k = Symbol(
-                period_tag(config.evalperiod), 
+                period_tag(config.evalperiod),
                 config.evalperiod === CompletePeriod() ? "" : "_",
                 metric,
             )
             val = mean(metrics[k])
-            stderror = std(metrics[k]) / sqrt(config.nfolds)
+            stderror = std(metrics[k]) / sqrt(length(config.trendfns))
             @info "$k: $val ± $stderror"
         end
     end

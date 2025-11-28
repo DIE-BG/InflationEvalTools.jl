@@ -65,7 +65,7 @@ include("resample/ResampleSynthetic.jl")
 # Identity resampler
 export ResampleIdentity
 include("resample/ResampleIdentity.jl")
-# Mixture resampler 
+# Mixture resampler
 export ResampleMixture
 include("resample/ResampleMixture.jl")
 
@@ -74,6 +74,7 @@ export RWTREND
 include("trend/RWTREND.jl")
 
 export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity, TrendDynamicRW
+export create_TrendDynamicRW_array, zeromean_validation
 include("trend/TrendFunction.jl")
 include("trend/TrendDynamicRW.jl")
 

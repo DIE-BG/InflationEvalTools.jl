@@ -85,7 +85,7 @@ include("ResampleMixture_tests.jl")
 
 # Tests for the TrendDynamicRW object
 @testset "TrendDynamicRW Tests" begin
-    include("TrendDynamicRW.jl")
+    include("TrendDynamicRW_tests.jl")
 end
 
 # Tests for SimDynamicConfig and simulation utilities
