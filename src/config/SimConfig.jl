@@ -143,9 +143,14 @@ end
 """
     dict2config(params::Dict)
 
-Function to convert a parameter dictionary to `SimConfig`.
+Function to convert a parameter dictionary to `SimConfig` or `SimDynamicConfig`.
 """
 function dict2config(params::Dict)
+    # Check if it is a dynamic configuration
+    if haskey(params, :trendfns)
+        return SimDynamicConfig(params)
+    end
+
     if (:evalperiods in keys(params))
         config = SimConfig(params[:inflfn], params[:resamplefn], params[:trendfn], params[:paramfn], params[:nsim], params[:traindate], params[:evalperiods])
     else 

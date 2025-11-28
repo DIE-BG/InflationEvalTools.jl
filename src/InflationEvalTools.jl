@@ -13,7 +13,7 @@ using Chain: Chain, @chain
 using Dates: Dates, Date, DateFormat, Month, TimeType, month
 using Distributed: Distributed, @distributed, RemoteChannel
 using Distributions: Distributions, Normal, cor, mean, pdf, std
-using DrWatson: DrWatson, savename, struct2dict, tostringdict, wsave
+using DrWatson: DrWatson, savename, struct2dict, tostringdict, wsave, @dict
 using InflationFunctions: InflationFunctions, InflationTotalRebaseCPI,
     InflationWeightedMean
 using Ipopt: Ipopt
@@ -21,7 +21,7 @@ using JLD2: JLD2, load
 using JuMP: JuMP, @constraint, @constraints, @objective, @variable, Model,
     optimize!, set_silent
 using ProgressMeter: ProgressMeter, @showprogress, Progress, next!
-using Random: AbstractRNG
+using Random: AbstractRNG, Xoshiro
 using Reexport: Reexport
 using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG
@@ -65,7 +65,7 @@ include("resample/ResampleSynthetic.jl")
 # Identity resampler
 export ResampleIdentity
 include("resample/ResampleIdentity.jl")
-# Mixture resampler 
+# Mixture resampler
 export ResampleMixture
 include("resample/ResampleMixture.jl")
 
@@ -73,8 +73,10 @@ include("resample/ResampleMixture.jl")
 export RWTREND
 include("trend/RWTREND.jl")
 
-export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity
+export TrendRandomWalk, TrendAnalytical, TrendExponential, TrendIdentity, TrendDynamicRW
+export create_TrendDynamicRW_array, zeromean_validation
 include("trend/TrendFunction.jl")
+include("trend/TrendDynamicRW.jl")
 
 export InflationParameter, ParamTotalCPIRebase, ParamTotalCPI, ParamWeightedMean
 export ParamTotalCPILegacyRebase # evaluation parameter 2019
@@ -82,10 +84,12 @@ include("param/InflationParameter.jl")
 
 # Types for simulation configuration
 export AbstractConfig, SimConfig
+export SimDynamicConfig
 export CompletePeriod, EvalPeriod, PeriodVector, eval_periods, period_tag
 export GT_EVAL_B00, GT_EVAL_B10, GT_EVAL_T0010
 include("config/EvalPeriod.jl")
 include("config/SimConfig.jl")
+include("config/SimDynamicConfig.jl")
 
 ## Functions for trajectory generation
 export gentrajinfl, pargentrajinfl
@@ -96,6 +100,7 @@ include("simulate/pargentrajinfl.jl")
 export dict2config
 export compute_lowlevel_sim, compute_assessment_sim, run_assessment_batch
 include("simulate/simutils.jl")
+include("simulate/simutils_dynamic.jl")
 export eval_metrics, combination_metrics
 include("simulate/metrics.jl")
 export eval_mse_online # Online MSE evaluation function

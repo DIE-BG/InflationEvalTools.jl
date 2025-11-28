@@ -13,7 +13,8 @@ import Random: AbstractRNG
 
 # Load GT data
 CPIDataGT.load_data()
-include("BTIMA_extension_helpers.jl")  # Extension helper functions
+# Uncomment the line below to run this script manually
+# include("BTIMA_extension_helpers.jl")  # Extension helper functions
 
 ##  ----------------------------------------------------------------------------
 #   Setup test data and helper samplers
