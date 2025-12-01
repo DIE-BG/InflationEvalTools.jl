@@ -7,6 +7,7 @@
         rndseed = DEFAULT_SEED,
         shortmetrics = false,
         showprogress = false,
+        verbose = true,
     ) -> (Dict, Array{<:AbstractFloat, 3})
 
 Generate the parametric (population) trajectory, simulated inflation
@@ -28,16 +29,18 @@ Keyword arguments
     memory footprint). Default `false`.
 - `showprogress`: show progress bar during simulation generation (default
     `false`).
+- `verbose`: show information messages during the process (default `true`).
 
 See also [`eval_metrics`](@ref) for details on the metric names stored in
 `metrics`.
 """
 function compute_lowlevel_sim(
-    data::CountryStructure, config::SimConfig;
-    rndseed=DEFAULT_SEED,
-    shortmetrics=false,
-    showprogress=false,
-)
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        shortmetrics = false,
+        showprogress = false,
+        verbose = true,
+    )
 
     # Get data up to the configuration date
     data_eval = data[config.traindate]
@@ -46,7 +49,9 @@ function compute_lowlevel_sim(
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
     traj_infl_pob = param(data_eval)
 
-    @info "B-TIMA assessment simulation" measure = measure_name(config.inflfn) resample = method_name(config.resamplefn) trend = method_name(config.trendfn) assessment = measure_name(config.paramfn) simulations = config.nsim traindate = config.traindate periods = config.evalperiods
+    if verbose
+        @info "B-TIMA assessment simulation" measure = measure_name(config.inflfn) resample = method_name(config.resamplefn) trend = method_name(config.trendfn) assessment = measure_name(config.paramfn) simulations = config.nsim traindate = config.traindate periods = config.evalperiods
+    end
 
     # Generate the simulated inflation trajectories
     traj_infl = pargentrajinfl(
@@ -55,7 +60,7 @@ function compute_lowlevel_sim(
         config.trendfn, # trend function
         data_eval; # evaluation data
         rndseed,
-        numreplications=config.nsim,
+        numreplications = config.nsim,
         showprogress,
     )
 
@@ -66,8 +71,11 @@ function compute_lowlevel_sim(
         metrics = @views eval_metrics(traj_infl[mask, :, :], traj_infl_pob[mask]; shortmetrics, prefix)
         metrics
     end
-    # Show the main assessment metrics by default, the RMSE
-    @info "Assessment metrics:" filter(t -> contains(string(t), "rmse"), metrics)...
+
+    if verbose
+        # Show the main assessment metrics by default, the RMSE
+        @info "Assessment metrics:" filter(t -> contains(string(t), "rmse"), metrics)...
+    end
 
     # Return these values
     return metrics, traj_infl
@@ -81,7 +89,8 @@ end
         rndseed = DEFAULT_SEED,
         savetrajectories = false,
         shortmetrics = false,
-        showprogress = false
+        showprogress = false,
+        verbose = true,
     ) -> Dict
 
 Run the low‑level simulation (`compute_lowlevel_sim`), collect evaluation
@@ -98,6 +107,7 @@ Keyword arguments
 - `shortmetrics`: compute a reduced metrics set when true (default `false`).
 - `showprogress`: show progress during trajectory generation (default
     `false`).
+- `verbose`: show information messages during the process (default `true`).
 
 Example
 
@@ -106,12 +116,13 @@ julia> results = compute_assessment_sim(gtdata, config)
 ```
 """
 function compute_assessment_sim(
-    data::CountryStructure, config::SimConfig;
-    rndseed=DEFAULT_SEED,
-    savetrajectories=false,
-    shortmetrics=false,
-    showprogress=false,
-)
+        data::CountryStructure, config::SimConfig;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = false,
+        showprogress = false,
+        verbose = true,
+    )
 
     # Run the simulation and get the results
     metrics, trajinfl = compute_lowlevel_sim(
@@ -119,6 +130,7 @@ function compute_assessment_sim(
         rndseed,
         shortmetrics,
         showprogress,
+        verbose,
     )
 
     # Add results to dictionary
@@ -145,7 +157,7 @@ end
 
 Generate a batch of simulation assessments from a list (or iterable) of
 parameter dictionaries. Each element in `dict_list_params` is converted to a
-`SimConfig` with `dict2config` and evaluated with
+`SimConfig` or a `SimDynamicConfig` with `dict2config` and evaluated with
 `compute_assessment_sim`. Results are saved to `savepath` using
 `DrWatson.savename` so they can later be read by `collect_results`. 
 
@@ -185,25 +197,27 @@ After the batch completes, use `collect_results(savepath)` to assemble a
 `DataFrame` with the stored metrics.
 """
 function run_assessment_batch(
-    data::CountryStructure, dict_list_params, savepath::AbstractString;
-    rndseed=DEFAULT_SEED,
-    savetrajectories=false,
-    shortmetrics=false,
-    showprogress=true,
-    recompute=false,
-)
+        data::CountryStructure, dict_list_params, savepath::AbstractString;
+        rndseed = DEFAULT_SEED,
+        savetrajectories = false,
+        shortmetrics = true,
+        showprogress = true,
+        recompute = false,
+        verbose = true,
+    )
 
     # Run batch of simulations
     N = length(dict_list_params)
     for (i, dict_params) in enumerate(dict_list_params)
-        # Convert dictionary to SimConfig
+        # Convert dictionary to configuration (SimConfig or SimDynamicConfig)
         config = dict2config(dict_params)
+
         # Define filename and filepath from the configuration
         filename = DrWatson.savename(config, "jld2")
         filepath = joinpath(savepath, filename)
         # Check if file exists and skip if recompute is false
         if isfile(filepath) && !recompute
-            @info "Skipping simulation $i/$N: results file already exists at" path=filename
+            @info "Skipping simulation $i/$N: results file already exists at" path = filename
             continue
         end
 
@@ -213,7 +227,8 @@ function run_assessment_batch(
             rndseed,
             shortmetrics,
             savetrajectories,
-            showprogress
+            showprogress,
+            verbose
         )
 
         # Save the results

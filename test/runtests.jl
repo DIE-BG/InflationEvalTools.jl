@@ -82,3 +82,13 @@ end
 
 # Tests for the ResampleMixture object
 include("ResampleMixture_tests.jl")
+
+# Tests for the TrendDynamicRW object
+@testset "TrendDynamicRW Tests" begin
+    include("TrendDynamicRW_tests.jl")
+end
+
+# Tests for SimDynamicConfig and simulation utilities
+@testset "SimDynamicConfig Tests" begin
+    include("SimDynamicConfig_tests.jl")
+end

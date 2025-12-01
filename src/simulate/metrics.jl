@@ -1,40 +1,60 @@
 """
-    eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false) -> Dict
+    eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="") -> Dict
 
-Function to obtain a dictionary with evaluation statistics of the
-realizations of the inflation measures in `tray_infl` using the parameter
-`tray_infl_pob`. 
+Compute evaluation metrics for inflation trajectories.
 
-If `shortmetrics=true`, returns a dictionary only with the mean squared error (MSE) of evaluation. Useful for performing iterative optimization in parameter search.
+This function calculates various statistical metrics to evaluate the performance of simulated inflation trajectories (`tray_infl`) against a parametric population trajectory (`tray_infl_pob`).
+
+# Arguments
+- `tray_infl`: Array of simulated inflation trajectories (3D array: periods x 1 x simulations).
+- `tray_infl_pob`: Vector or 1-column matrix of the parametric population inflation trajectory.
+- `shortmetrics`: Boolean. If `true`, returns a reduced dictionary with key metrics (MSE, RMSE, MAE, ME, AbsME, Huber, Correlation) and their standard errors. Default is `true`.
+- `prefix`: String. Optional prefix for the keys in the output dictionary.
+
+# Returns
+A dictionary containing the computed metrics.
+
+If `shortmetrics=true`, the dictionary includes:
+- `mse`, `mse_std_error`: Mean Squared Error and its standard error.
+- `rmse`, `rmse_std_error`: Root Mean Squared Error and its standard error.
+- `mae`, `mae_std_error`: Mean Absolute Error and its standard error.
+- `me`, `me_std_error`: Mean Error (Bias) and its standard error.
+- `absme`, `absme_std_error`: Absolute Mean Error and its standard error.
+- `huber`, `huber_std_error`: Huber Loss and its standard error.
+- `corr`: Average correlation between simulations and population trajectory.
+
+If `shortmetrics=false`, the dictionary additionally includes:
+- `std_mse_dist`: Standard deviation of the MSE distribution.
+- `std_sqerr_dist`: Standard deviation of the squared error distribution.
+- `mse_bias`: Squared bias component of MSE decomposition.
+- `mse_var`: Variance component of MSE decomposition.
+- `mse_cov`: Covariance component of MSE decomposition.
+- `T`: Number of periods.
+- `B`: Number of simulations.
 """
-function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="")
+function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=true, prefix="")
     _prefix = prefix == "" ? "" : prefix * "_"
     T = size(tray_infl, 1)
     K = size(tray_infl, 3)
     
-    # MSE 
-    mse = _mse(tray_infl, tray_infl_pob)
-    shortmetrics && return Dict(Symbol(_prefix, "mse") => mse) # only MSE if shortmetrics=true
-    
     # Error distributions 
     err_dist = tray_infl .- tray_infl_pob
-    # Squared error distribution
+    
+    # MSE 
+    mse = mean(x -> x^2, err_dist)
+    
+    # Squared error distribution (average over time for each simulation)
     mse_dist = vec(mean(x -> x^2, err_dist, dims=1))
-    sq_err_dist = err_dist .^ 2
     # Standard deviation of the MSE distribution for the full period
     std_mse_dist = std(mse_dist, mean=mse) 
-    
     # Standard error of simulation of the obtained average value
     mse_std_error = std_mse_dist / sqrt(K)
-    # mse_std_error = std(sq_err_dist, mean=mse) / sqrt(T * K)
-    
-    # Standard deviation of the squared error ~ all periods and realizations
-    std_sqerr_dist = std(sq_err_dist, mean=mse)
-    
+
     # RMSE, MAE, ME
     rmse = mean(sqrt, mse_dist)
     mae = mean(abs, err_dist)
     me = mean(err_dist)
+    absme = abs(me)
     
     # Huber loss ~ combines the properties of MSE and MAE
     huber = mean(huber_loss, err_dist)
@@ -42,6 +62,29 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="")
     # Correlation 
     corr_dist = first.(cor.(eachslice(tray_infl, dims=3), Ref(tray_infl_pob)))
     corr = mean(corr_dist) 
+
+    # Return short metrics
+    if shortmetrics
+        return Dict(
+            Symbol(_prefix, "mse") => mse, 
+            Symbol(_prefix, "rmse") => rmse, 
+            Symbol(_prefix, "mae") => mae, 
+            Symbol(_prefix, "me") => me, 
+            Symbol(_prefix, "absme") => absme, 
+            Symbol(_prefix, "huber") => huber,
+            Symbol(_prefix, "corr") => corr,
+        )
+    end
+
+    # Standard errors
+    rmse_std_error = std(sqrt.(mse_dist), mean=rmse) / sqrt(K)
+    mae_std_error = std(mean(abs, err_dist, dims=2), mean=mae) / sqrt(K)
+    me_std_error = std(mean(err_dist, dims=2), mean=me) / sqrt(K)
+    huber_std_error = std(mean(huber_loss, err_dist, dims=2), mean=huber) / sqrt(T * K)
+
+    # Standard deviation of the squared error ~ all periods and realizations
+    sq_err_dist = err_dist .^ 2
+    std_sqerr_dist = std(sq_err_dist, mean=mse)
 
     ## Additive decomposition of the MSE
 
@@ -65,15 +108,21 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="")
         Symbol(_prefix, "std_mse_dist") => std_mse_dist, 
         Symbol(_prefix, "std_sqerr_dist") => std_sqerr_dist, 
         Symbol(_prefix, "rmse") => rmse, 
+        Symbol(_prefix, "rmse_std_error") => rmse_std_error, 
         Symbol(_prefix, "mae") => mae, 
+        Symbol(_prefix, "mae_std_error") => mae_std_error, 
         Symbol(_prefix, "me") => me, 
-        Symbol(_prefix, "absme") => abs(me), 
+        Symbol(_prefix, "me_std_error") => me_std_error, 
+        Symbol(_prefix, "absme") => absme, 
+        Symbol(_prefix, "absme_std_error") => me_std_error,
         Symbol(_prefix, "corr") => corr, 
         Symbol(_prefix, "huber") => huber,
+        Symbol(_prefix, "huber_std_error") => huber_std_error,
         Symbol(_prefix, "mse_bias") => mse_bias, 
         Symbol(_prefix, "mse_var") => mse_var, 
         Symbol(_prefix, "mse_cov") => mse_cov,
-        Symbol(_prefix, "T") => T
+        Symbol(_prefix, "T") => T,
+        Symbol(_prefix, "B") => K
     )
 end
 
