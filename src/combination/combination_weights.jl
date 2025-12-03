@@ -359,47 +359,50 @@ end
 
 
 """
-    share_combination_weights_rmse(tray_infl::AbstractArray{F,3}, tray_infl_param) -> Vector{F}
+    share_combination_weights_rmse(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}) -> Vector{F}
 
-Compute a vector of non-negative weights `β` that sum to 1 by minimizing a
-nonlinear loss function based on the average root mean squared error (RMSE).
-
-The objective function is:
-
-    RMSE(β) = (1/K) ⋅ Σₖ √[ (1/T) ⋅ Σₜ (ĥπₜₖ(β) − πₜ)² ]
-
-where:
-
-- ĥπₜₖ(β) = tray_infl[t, :, k]' * β  is the predicted linear combination,
-- πₜ is the target series,
-- T is the number of time periods,
-- K is the number of trajectories or models.
-
-The resulting vector `β` represents the shares in the optimal linear combination
-under the RMSE criterion.
+Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the average root mean squared error (RMSE).
 """
-function share_combination_weights_rmse(tray_infl::AbstractArray{F, 3}, tray_infl_param) where {F}
+function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F}
 
-    T, N, K = size(tray_infl)
+    T_traj, N_traj, K_traj = size(traj_infl)
+    T_param, N_param, K_param = size(traj_infl_param)
 
-    @assert T == length(tray_infl_param) "The trajectories and the parameter should have the same number of periods."
+    @assert T_traj == T_param "The trajectories and the parameter should have the same number of periods."
+    @assert K_traj % K_param == 0 "The number of trajectories should be the number of simulations times the numbers of batches."
+
+    # number of simulations per batch
+    N_sim = convert(Int, K_traj / K_param)
 
     function rmse_loss(β)
-        rmse_k = Vector(undef, K)
-        for k in 1:K
-            ∑e² = F(0)
-            for t in 1:T
-                ∑e² += (tray_infl[t, :, k]' * β - tray_infl_param[t])^2
+        # The first level of the loop represents the batch in the trend simulation
+        rmse_b = Vector(undef, K_param)
+        for b in 1:K_param
+
+            param_b = @view traj_infl_param[:, :, b]
+            traj_b = @view traj_infl[:, :, (1 + N_sim * (b - 1)):(N_sim * b)]
+
+            # The second level of the loop represents the simulations per batch
+            rmse_k = Vector(undef, N_sim)
+            for k in 1:N_sim
+                # The third level is the accumulation of the squared error
+                ∑e² = F(0)
+                for t in 1:T_traj
+                    ∑e² += (traj_b[t, :, k]' * β - param_b[t])^2
+                end
+                rmse_k[k] = sqrt((1 / T_traj) * ∑e²)
             end
-            rmse_k[k] = sqrt((1 / T) * ∑e²)
+
+            rmse_b[b] = mean(rmse_k)
         end
-        return mean(rmse_k)
+
+        return mean(rmse_b)
     end
 
-    # Problema de optimización restringida
+    # restricted optimization problem
     model = Model(Ipopt.Optimizer)
-    @variable(model, β[1:N] >= 0)
-    @constraint(model, sum(β[1:N]) == 1)
+    @variable(model, β[1:N_traj] >= 0)
+    @constraint(model, sum(β[1:N_traj]) == 1)
 
     @objective(model, Min, rmse_loss(β))
 
