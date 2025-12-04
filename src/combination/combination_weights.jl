@@ -412,95 +412,52 @@ end
 
 
 """
-    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param) -> Vector{F}
+    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}) -> Vector{F}
 
-Compute a vector of non-negative weights `β` that sum to 1 by minimizing a
-nonlinear loss function based on the average absolute mean error (ABSME).
-
-The objective function is:
-
-    ABSME(β) = (1/K) ⋅ Σₖ |(1/T) ⋅ Σₜ (ĥπₜₖ(β) − πₜ|
-
-where:
-
-- ĥπₜₖ(β) = tray_infl[t, :, k]' * β  is the predicted linear combination,
-- πₜ is the target series,
-- T is the number of time periods,
-- K is the number of trajectories or models.
-
-The resulting vector `β` represents the shares in the optimal linear combination
-under the ABSME criterion.
+Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the absolute average mean error.
 """
-function share_combination_weights_absme(tray_infl::AbstractArray{F, 3}, tray_infl_param) where {F}
+function share_combination_weights_absme(traj_infl::AbstractArray{F, 3}, traj_infl_param) where {F}
 
-    T, N, K = size(tray_infl)
+    T_traj, N_traj, K_traj = size(traj_infl)
+    T_param, N_param, K_param = size(traj_infl_param)
 
-    @assert T == length(tray_infl_param) "The trajectories and the parameter should have the same number of periods."
+    @assert T_traj == T_param "The trajectories and the parameter should have the same number of periods."
+    @assert K_traj % K_param == 0 "The number of trajectories should be the number of simulations times the numbers of batches."
+
+    # number of simulations per batch
+    N_sim = convert(Int, K_traj / K_param)
 
     function absme_loss(β)
-        absme_k = Vector(undef, K)
-        for k in 1:K
-            ∑e = F(0)
-            for t in 1:T
-                ∑e += (tray_infl[t, :, k]' * β - tray_infl_param[t])
+        # The first level of the loop represents the batch in the trend simulation
+        absme_b = Vector(undef, K_param)
+        for b in 1:K_param
+
+            param_b = @view traj_infl_param[:, :, b]
+            traj_b = @view traj_infl[:, :, (1 + N_sim * (b - 1)):(N_sim * b)]
+
+            # The second level of the loop represents the simulations per batch
+            absme_k = Vector(undef, N_sim)
+            for k in 1:N_sim
+                # The third level is the accumulation of the squared error
+                ∑e = F(0)
+                for t in 1:T_traj
+                    ∑e += (traj_b[t, :, k]' * β - param_b[t])
+                end
+                absme_k[k] = abs((1 / T_traj) * ∑e)
             end
-            absme_k[k] = abs((1 / T) * ∑e)
+
+            absme_b[b] = mean(absme_k)
         end
-        return mean(absme_k)
+
+        return mean(absme_b)
     end
 
     # Problema de optimización restringida
     model = Model(Ipopt.Optimizer)
-    @variable(model, β[1:N] >= 0)
-    @constraint(model, sum(β[1:N]) == 1)
+    @variable(model, β[1:N_traj] >= 0)
+    @constraint(model, sum(β[1:N_traj]) == 1)
 
     @objective(model, Min, absme_loss(β))
-
-    optimize!(model)
-    return convert.(F, JuMP.value.(β))
-end
-
-
-"""
-    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param) -> Vector{F}
-
-Compute a vector of non-negative weights `β` that sum to 1 by minimizing a
-nonlinear loss function based on the average absolute mean error (ABSME).
-
-The objective function is:
-
-    ABSME(β) = (1/K) ⋅ Σₖ |(1/T) ⋅ Σₜ (ĥπₜₖ(β) − πₜ|
-
-where:
-
-- ĥπₜₖ(β) = tray_infl[t, :, k]' * β  is the predicted linear combination,
-- πₜ is the target series,
-- T is the number of time periods,
-- K is the number of trajectories or models.
-
-The resulting vector `β` represents the shares in the optimal linear combination
-under the ABSME criterion.
-"""
-function share_combination_weights_corr(tray_infl::AbstractArray{F, 3}, tray_infl_param) where {F}
-
-    T, N, K = size(tray_infl)
-
-    @assert T == length(tray_infl_param) "The trajectories and the parameter should have the same number of periods."
-
-    function corr_loss(β)
-        corr_k = Vector(undef, K)
-        for k in 1:K
-            corr_k[k] = cor(tray_infl[:, :, k] * β, tray_infl_param)
-        end
-        return mean(corr_k)
-    end
-
-    # Problema de optimización restringida
-    model = Model(Ipopt.Optimizer)
-    @variable(model, β[1:N] >= 0)
-    @constraint(model, sum(β[1:N]) == 1)
-
-    @objective(model, Max, corr_loss(β))
 
     optimize!(model)
     return convert.(F, JuMP.value.(β))

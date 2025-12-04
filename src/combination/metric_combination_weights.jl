@@ -1,7 +1,9 @@
 # Support function to evaluate the metric of the linear combination
-function eval_combination(tray_infl::AbstractArray{F, 3}, tray_infl_param, w; 
-    metric::Symbol = :corr, 
-    sum_abstol::AbstractFloat = 1f-2) where F
+function eval_combination(
+        tray_infl::AbstractArray{F, 3}, tray_infl_param, w;
+        metric::Symbol = :corr,
+        sum_abstol::AbstractFloat = 1.0f-2
+    ) where {F}
 
     n = size(tray_infl, 2)
     s = metric == :corr ? -1 : 1 # sign for objective metric
@@ -10,19 +12,19 @@ function eval_combination(tray_infl::AbstractArray{F, 3}, tray_infl_param, w;
     restp = 5 * one(F) # penalty for sum constraint
 
     penalty = zero(F)
-    for i in 1:n 
-        if w[i] < 0 
+    for i in 1:n
+        if w[i] < 0
             penalty += bp - 2(w[i])
         end
     end
-    if !(abs(sum(w) - 1) < sum_abstol) 
+    if !(abs(sum(w) - 1) < sum_abstol)
         penalty += restp + 2 * abs(sum(w) - 1)
-    end 
-    penalty != 0 && return penalty 
+    end
+    penalty != 0 && return penalty
 
     # Compute the metric and return its value
     obj = combination_metrics(tray_infl, tray_infl_param, w)[metric]
-    s*obj
+    return s * obj
 end
 
 
@@ -58,15 +60,17 @@ columns of `tray_infl`.
 See also: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref),
 [`share_combination_weights`](@ref), [`elastic_combination_weights`](@ref).
 """
-function metric_combination_weights(tray_infl::AbstractArray{F, 3}, tray_infl_param; 
-    metric::Symbol = :corr, 
-    w_start = nothing, 
-    x_abstol::AbstractFloat = 1f-2, 
-    f_abstol::AbstractFloat = 1f-4, 
-    sum_abstol::AbstractFloat = 1f-4, 
-    max_iterations::Int = 1000) where F
+function metric_combination_weights(
+        tray_infl::AbstractArray{F, 3}, tray_infl_param;
+        metric::Symbol = :corr,
+        w_start = nothing,
+        x_abstol::AbstractFloat = 1.0f-2,
+        f_abstol::AbstractFloat = 1.0f-4,
+        sum_abstol::AbstractFloat = 1.0f-4,
+        max_iterations::Int = 1000
+    ) where {F}
 
-    # Number of weights 
+    # Number of weights
     n = size(tray_infl, 2)
 
     # Initial point
@@ -78,19 +82,20 @@ function metric_combination_weights(tray_infl::AbstractArray{F, 3}, tray_infl_pa
 
     # Objective function closure
     objectivefn = w -> eval_combination(tray_infl, tray_infl_param, w; metric, sum_abstol)
-
     # Iterative optimization
     optres = Optim.optimize(
-        objectivefn, # Objective function 
+        objectivefn, # Objective function
         zeros(F, n), ones(F, n), # Bounds
-        w0, # Initial search point 
-        Optim.NelderMead(), # Optimization method 
+        w0, # Initial search point
+        Optim.NelderMead(), # Optimization method
         Optim.Options(
-            x_abstol = x_abstol, f_abstol = f_abstol, 
-            show_trace = true, extended_trace=true, 
-            iterations = max_iterations))
+            x_abstol = x_abstol, f_abstol = f_abstol,
+            show_trace = true, extended_trace = true,
+            iterations = max_iterations
+        )
+    )
 
     # Get the weights
     wf = Optim.minimizer(optres)
-    wf
+    return wf
 end

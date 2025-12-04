@@ -1,4 +1,56 @@
 """
+    compute_error_distribution(traj_infl, traj_infl_param)
+Compute the error distribution for an array of trajectories and parameters.
+"""
+function compute_error_distribution(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractVector{F}) where {F <: AbstractFloat}
+    return err_dist = traj_infl .- traj_infl_param
+end
+
+function compute_error_distribution(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F <: AbstractFloat}
+    T_infl, M_infl, K_infl = size(traj_infl)
+    T_param, M_param, N_batches = size(traj_infl_param)
+
+    @assert K_infl % N_batches == 0 "The number of batches inferred from the simulations in `traj_infl` and `traj_infl_param` should be an integer."
+
+    N_sim = Int(K_infl / N_batches)
+
+    err_dist = similar(traj_infl)
+    for batch in 1:N_batches
+        lower_limit = 1 + N_sim * (batch - 1)
+        upper_limit = N_sim * batch
+        err_dist[:, :, lower_limit:upper_limit] = traj_infl[:, :, lower_limit:upper_limit] .- traj_infl_param[:, :, batch]
+    end
+    return err_dist
+end
+
+"""
+    compute_corr(traj_infl, traj_infl_param)
+Compute the correlation between an array of trajectories and parameters.
+"""
+function compute_corr(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F <: AbstractFloat}
+    T_infl, M_infl, K_infl = size(traj_infl)
+    T_param, M_param, N_batches = size(traj_infl_param)
+
+    @assert K_infl % N_batches == 0 "The number of batches inferred from the simulations in `traj_infl` and `traj_infl_param` should be an integer."
+
+    N_sim = Int(K_infl / N_batches)
+
+    corr_result = Vector{F}(undef, K_infl)
+    for batch in 1:N_batches
+        lower_limit = 1 + N_sim * (batch - 1)
+        upper_limit = N_sim * batch
+        traj_batch = traj_infl[:, :, lower_limit:upper_limit]
+        param_batch = traj_infl_param[:, :, batch]
+        corr_result[lower_limit:upper_limit] = first.(cor.(eachslice(traj_batch, dims = 3), Ref(param_batch)))
+    end
+    return corr_result
+end
+
+function compute_corr(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 1}) where {F <: AbstractFloat}
+    return first.(cor.(eachslice(traj_infl, dims = 3), Ref(traj_infl_param)))
+end
+
+"""
     eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="") -> Dict
 
 Compute evaluation metrics for inflation trajectories.
@@ -32,21 +84,21 @@ If `shortmetrics=false`, the dictionary additionally includes:
 - `T`: Number of periods.
 - `B`: Number of simulations.
 """
-function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=true, prefix="")
+function eval_metrics(tray_infl, tray_infl_pob; shortmetrics = true, prefix = "")
     _prefix = prefix == "" ? "" : prefix * "_"
     T = size(tray_infl, 1)
     K = size(tray_infl, 3)
-    
-    # Error distributions 
-    err_dist = tray_infl .- tray_infl_pob
-    
-    # MSE 
+
+    # Error distributions
+    err_dist = compute_error_distribution(tray_infl, tray_infl_pob)
+
+    # MSE
     mse = mean(x -> x^2, err_dist)
-    
+
     # Squared error distribution (average over time for each simulation)
-    mse_dist = vec(mean(x -> x^2, err_dist, dims=1))
+    mse_dist = vec(mean(x -> x^2, err_dist, dims = 1))
     # Standard deviation of the MSE distribution for the full period
-    std_mse_dist = std(mse_dist, mean=mse) 
+    std_mse_dist = std(mse_dist, mean = mse)
     # Standard error of simulation of the obtained average value
     mse_std_error = std_mse_dist / sqrt(K)
 
@@ -55,46 +107,46 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=true, prefix="")
     mae = mean(abs, err_dist)
     me = mean(err_dist)
     absme = abs(me)
-    
+
     # Huber loss ~ combines the properties of MSE and MAE
     huber = mean(huber_loss, err_dist)
 
-    # Correlation 
-    corr_dist = first.(cor.(eachslice(tray_infl, dims=3), Ref(tray_infl_pob)))
-    corr = mean(corr_dist) 
+    # Correlation
+    corr_dist = compute_corr(tray_infl, tray_infl_pob)
+    corr = mean(corr_dist)
 
     # Return short metrics
     if shortmetrics
         return Dict(
-            Symbol(_prefix, "mse") => mse, 
-            Symbol(_prefix, "rmse") => rmse, 
-            Symbol(_prefix, "mae") => mae, 
-            Symbol(_prefix, "me") => me, 
-            Symbol(_prefix, "absme") => absme, 
+            Symbol(_prefix, "mse") => mse,
+            Symbol(_prefix, "rmse") => rmse,
+            Symbol(_prefix, "mae") => mae,
+            Symbol(_prefix, "me") => me,
+            Symbol(_prefix, "absme") => absme,
             Symbol(_prefix, "huber") => huber,
             Symbol(_prefix, "corr") => corr,
         )
     end
 
     # Standard errors
-    rmse_std_error = std(sqrt.(mse_dist), mean=rmse) / sqrt(K)
-    mae_std_error = std(mean(abs, err_dist, dims=2), mean=mae) / sqrt(K)
-    me_std_error = std(mean(err_dist, dims=2), mean=me) / sqrt(K)
-    huber_std_error = std(mean(huber_loss, err_dist, dims=2), mean=huber) / sqrt(T * K)
+    rmse_std_error = std(sqrt.(mse_dist), mean = rmse) / sqrt(K)
+    mae_std_error = std(mean(abs, err_dist, dims = 2), mean = mae) / sqrt(K)
+    me_std_error = std(mean(err_dist, dims = 2), mean = me) / sqrt(K)
+    huber_std_error = std(mean(huber_loss, err_dist, dims = 2), mean = huber) / sqrt(T * K)
 
     # Standard deviation of the squared error ~ all periods and realizations
     sq_err_dist = err_dist .^ 2
-    std_sqerr_dist = std(sq_err_dist, mean=mse)
+    std_sqerr_dist = std(sq_err_dist, mean = mse)
 
     ## Additive decomposition of the MSE
 
     # Bias^2
-    me_dist = vec(mean(err_dist, dims=1))
+    me_dist = vec(mean(err_dist, dims = 1))
     mse_bias = mean(x -> x^2, me_dist)
 
     # Variance component
-    s_param = std(tray_infl_pob, corrected=false)
-    s_tray_infl = vec(std(tray_infl, dims=1, corrected=false))
+    s_param = std(tray_infl_pob, corrected = false)
+    s_tray_infl = vec(std(tray_infl, dims = 1, corrected = false))
     mse_var = mean(s -> (s - s_param)^2, s_tray_infl)
 
     # Correlation component
@@ -102,24 +154,24 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics=true, prefix="")
     mse_cov = mean(mse_cov_dist)
 
     # Dictionary of metrics to return
-    Dict(
-        Symbol(_prefix, "mse") => mse, 
-        Symbol(_prefix, "mse_std_error") => mse_std_error, 
-        Symbol(_prefix, "std_mse_dist") => std_mse_dist, 
-        Symbol(_prefix, "std_sqerr_dist") => std_sqerr_dist, 
-        Symbol(_prefix, "rmse") => rmse, 
-        Symbol(_prefix, "rmse_std_error") => rmse_std_error, 
-        Symbol(_prefix, "mae") => mae, 
-        Symbol(_prefix, "mae_std_error") => mae_std_error, 
-        Symbol(_prefix, "me") => me, 
-        Symbol(_prefix, "me_std_error") => me_std_error, 
-        Symbol(_prefix, "absme") => absme, 
+    return Dict(
+        Symbol(_prefix, "mse") => mse,
+        Symbol(_prefix, "mse_std_error") => mse_std_error,
+        Symbol(_prefix, "std_mse_dist") => std_mse_dist,
+        Symbol(_prefix, "std_sqerr_dist") => std_sqerr_dist,
+        Symbol(_prefix, "rmse") => rmse,
+        Symbol(_prefix, "rmse_std_error") => rmse_std_error,
+        Symbol(_prefix, "mae") => mae,
+        Symbol(_prefix, "mae_std_error") => mae_std_error,
+        Symbol(_prefix, "me") => me,
+        Symbol(_prefix, "me_std_error") => me_std_error,
+        Symbol(_prefix, "absme") => absme,
         Symbol(_prefix, "absme_std_error") => me_std_error,
-        Symbol(_prefix, "corr") => corr, 
+        Symbol(_prefix, "corr") => corr,
         Symbol(_prefix, "huber") => huber,
         Symbol(_prefix, "huber_std_error") => huber_std_error,
-        Symbol(_prefix, "mse_bias") => mse_bias, 
-        Symbol(_prefix, "mse_var") => mse_var, 
+        Symbol(_prefix, "mse_bias") => mse_bias,
+        Symbol(_prefix, "mse_var") => mse_var,
         Symbol(_prefix, "mse_cov") => mse_cov,
         Symbol(_prefix, "T") => T,
         Symbol(_prefix, "B") => K
@@ -128,11 +180,11 @@ end
 
 
 # Huber loss
-function huber_loss(x::Real; a=1)
-    if abs(x) <= a 
+function huber_loss(x::Real; a = 1)
+    if abs(x) <= a
         return x^2 / 2
-    else 
-        return a*(abs(x) - a/2)
+    else
+        return a * (abs(x) - a / 2)
     end
 end
 
@@ -141,11 +193,11 @@ end
 # realizations of the errors between the inflation trajectories tray_infl and
 # the parametric inflation trajectory tray_pob
 function _mse(tray_infl, tray_infl_pob)
-    mean(x -> x^2, tray_infl .- tray_infl_pob)
+    return mean(x -> x^2, tray_infl .- tray_infl_pob)
 end
 
 
-# Metrics for linear combinations of estimators 
+# Metrics for linear combinations of estimators
 """
     combination_metrics(tray_infl, tray_infl_param, w; kwargs...) 
 
@@ -156,7 +208,7 @@ using the parametric trajectory `tray_infl_param`.
 Optional arguments (`kwargs...`) are passed to the function
 [`eval_metrics`](@ref).
 """
-function combination_metrics(tray_infl, tray_infl_param, w; kwargs...) 
-    tray_infl_comb = sum(tray_infl .* w', dims=2)
-    eval_metrics(tray_infl_comb, tray_infl_param; kwargs...)
+function combination_metrics(tray_infl, tray_infl_param, w; kwargs...)
+    tray_infl_comb = sum(tray_infl .* w', dims = 2)
+    return eval_metrics(tray_infl_comb, tray_infl_param; kwargs...)
 end
