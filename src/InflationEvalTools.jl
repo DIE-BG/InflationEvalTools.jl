@@ -27,6 +27,7 @@ using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG
 using LinearAlgebra: LinearAlgebra, mul!
 using OnlineStats: OnlineStats
+using Optim
 
 
 ## Default configuration of the seed for the simulation process

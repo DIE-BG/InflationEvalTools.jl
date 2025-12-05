@@ -363,7 +363,7 @@ end
 
 Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the average root mean squared error (RMSE).
 """
-function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F}
+function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}, λ::AbstractFloat = 0.0) where {F}
 
     T_traj, N_traj, K_traj = size(traj_infl)
     T_param, N_param, K_param = size(traj_infl_param)
@@ -399,15 +399,28 @@ function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_inf
         return mean(rmse_b)
     end
 
+    penalty(β) = mean(λ * sum(1 ./ (100 .* β)))
+
+    penalized_loss(β) = (10 * rmse_loss(β)) + penalty(β)
+
     # restricted optimization problem
     model = Model(Ipopt.Optimizer)
     @variable(model, β[1:N_traj] >= 0)
     @constraint(model, sum(β[1:N_traj]) == 1)
 
-    @objective(model, Min, rmse_loss(β))
+    #@objective(model, Min, rmse_loss(β))
+    @objective(model, Min, penalized_loss(β))
 
     optimize!(model)
-    return convert.(F, JuMP.value.(β))
+
+    β_opt = convert.(F, JuMP.value.(β))
+
+    return Dict(
+        :value => β_opt,
+        :rmse => rmse_loss(β_opt),
+        :penalty => penalty(β_opt),
+        :penalized_rmse => penalized_loss(β_opt),
+    )
 end
 
 
