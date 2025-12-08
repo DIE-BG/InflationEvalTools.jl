@@ -1,56 +1,4 @@
 """
-    compute_error_distribution(traj_infl, traj_infl_param)
-Compute the error distribution for an array of trajectories and parameters.
-"""
-function compute_error_distribution(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractVector{F}) where {F <: AbstractFloat}
-    return err_dist = traj_infl .- traj_infl_param
-end
-
-function compute_error_distribution(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F <: AbstractFloat}
-    T_infl, M_infl, K_infl = size(traj_infl)
-    T_param, M_param, N_batches = size(traj_infl_param)
-
-    @assert K_infl % N_batches == 0 "The number of batches inferred from the simulations in `traj_infl` and `traj_infl_param` should be an integer."
-
-    N_sim = Int(K_infl / N_batches)
-
-    err_dist = similar(traj_infl)
-    for batch in 1:N_batches
-        lower_limit = 1 + N_sim * (batch - 1)
-        upper_limit = N_sim * batch
-        err_dist[:, :, lower_limit:upper_limit] = traj_infl[:, :, lower_limit:upper_limit] .- traj_infl_param[:, :, batch]
-    end
-    return err_dist
-end
-
-"""
-    compute_corr(traj_infl, traj_infl_param)
-Compute the correlation between an array of trajectories and parameters.
-"""
-function compute_corr(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}) where {F <: AbstractFloat}
-    T_infl, M_infl, K_infl = size(traj_infl)
-    T_param, M_param, N_batches = size(traj_infl_param)
-
-    @assert K_infl % N_batches == 0 "The number of batches inferred from the simulations in `traj_infl` and `traj_infl_param` should be an integer."
-
-    N_sim = Int(K_infl / N_batches)
-
-    corr_result = Vector{F}(undef, K_infl)
-    for batch in 1:N_batches
-        lower_limit = 1 + N_sim * (batch - 1)
-        upper_limit = N_sim * batch
-        traj_batch = traj_infl[:, :, lower_limit:upper_limit]
-        param_batch = traj_infl_param[:, :, batch]
-        corr_result[lower_limit:upper_limit] = first.(cor.(eachslice(traj_batch, dims = 3), Ref(param_batch)))
-    end
-    return corr_result
-end
-
-function compute_corr(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 1}) where {F <: AbstractFloat}
-    return first.(cor.(eachslice(traj_infl, dims = 3), Ref(traj_infl_param)))
-end
-
-"""
     eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="") -> Dict
 
 Compute evaluation metrics for inflation trajectories.
@@ -84,13 +32,14 @@ If `shortmetrics=false`, the dictionary additionally includes:
 - `T`: Number of periods.
 - `B`: Number of simulations.
 """
-function eval_metrics(tray_infl, tray_infl_pob; shortmetrics = true, prefix = "")
+function eval_metrics(tray_infl::AbstractArray{F, 3}, tray_infl_pob::AbstractArray{F, 1}; shortmetrics = true, prefix = "") where {F <: AbstractFloat}
     _prefix = prefix == "" ? "" : prefix * "_"
     T = size(tray_infl, 1)
     K = size(tray_infl, 3)
 
     # Error distributions
-    err_dist = compute_error_distribution(tray_infl, tray_infl_pob)
+    #err_dist = compute_error_distribution(tray_infl, tray_infl_pob)
+    err_dist = tray_infl .- tray_infl_pob
 
     # MSE
     mse = mean(x -> x^2, err_dist)
@@ -112,7 +61,8 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics = true, prefix = ""
     huber = mean(huber_loss, err_dist)
 
     # Correlation
-    corr_dist = compute_corr(tray_infl, tray_infl_pob)
+    #corr_dist = compute_corr(tray_infl, tray_infl_pob)
+    corr_dist = first.(cor.(eachslice(tray_infl, dims = 3), Ref(tray_infl_pob)))
     corr = mean(corr_dist)
 
     # Return short metrics
@@ -178,6 +128,35 @@ function eval_metrics(tray_infl, tray_infl_pob; shortmetrics = true, prefix = ""
     )
 end
 
+function eval_metrics(tray_infl::AbstractArray{F, 3}, tray_infl_pob::AbstractArray{F, 3}; shortmetrics = true, prefix = "") where {F <: AbstractFloat}
+    T_infl, M_infl, K_infl = size(tray_infl)
+    T_param, M_param, N_batches = size(tray_infl_pob)
+
+    @assert K_infl % N_batches == 0 "The number of batches inferred from the simulations in `traj_infl` and `traj_infl_param` should be an integer."
+
+    # number of simulations per batch
+    N_sim = Int(K_infl / N_batches)
+
+    results_b = Vector{Dict{Symbol, F}}(undef, N_batches)
+
+    for batch in 1:N_batches
+        lower_limit = 1 + N_sim * (batch - 1)
+        upper_limit = N_sim * batch
+        tray_infl_batch = @view tray_infl[:, :, lower_limit:upper_limit]
+        tray_infl_pob_batch = @view tray_infl_pob[:, :, batch]
+        results_b[batch] = eval_metrics(
+            tray_infl_batch, vec(tray_infl_pob_batch);
+            shortmetrics = shortmetrics, prefix = prefix
+        )
+    end
+
+    results = Dict{Symbol, F}()
+    for key in keys(results_b[1])
+        results[key] = mean([results_b[b][key] for b in 1:N_batches])
+    end
+
+    return results
+end
 
 # Huber loss
 function huber_loss(x::Real; a = 1)
