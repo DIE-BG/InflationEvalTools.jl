@@ -62,6 +62,7 @@ See also: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref),
 """
 function metric_combination_weights(
         tray_infl::AbstractArray{F, 3}, tray_infl_param;
+        penalty::Function = w -> zero(F),
         metric::Symbol = :corr,
         w_start = nothing,
         x_abstol::AbstractFloat = 1.0f-2,
@@ -81,7 +82,7 @@ function metric_combination_weights(
     end
 
     # Objective function closure
-    objectivefn = w -> eval_combination(tray_infl, tray_infl_param, w; metric, sum_abstol)
+    objectivefn = w -> eval_combination(tray_infl, tray_infl_param, w; metric, sum_abstol) + penalty(w)
     # Iterative optimization
     optres = Optim.optimize(
         objectivefn, # Objective function
