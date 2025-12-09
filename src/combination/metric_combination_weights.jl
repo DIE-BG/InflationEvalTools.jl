@@ -53,6 +53,7 @@ Optional parameters:
 - `sum_abstol::AbstractFloat = 1f-2`: maximum permissible absolute deviation in
   the sum of weights, with respect to one.
 - `max_iterations::Int = 1000`: maximum number of iterations. 
+- `penalty::Function = w -> zero(F)`: penalty function applied to weights. 
 
 Returns a vector with the weights associated with each estimator in the
 columns of `tray_infl`.
