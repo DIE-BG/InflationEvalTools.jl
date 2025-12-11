@@ -128,6 +128,22 @@ function eval_metrics(tray_infl::AbstractArray{F, 3}, tray_infl_pob::AbstractArr
     )
 end
 
+"""
+    eval_metrics(tray_infl, tray_infl_pob; shortmetrics=false, prefix="") -> Dict
+
+Compute evaluation metrics for inflation trajectories.
+
+    # Arguments
+- `tray_infl`: Array of simulated inflation trajectories (3D array: periods x 1 x simulations).
+- `tray_infl_pob`: Array of the parametric population inflation trajectory (3D array: periods x 1 x batches).
+- `shortmetrics`: Boolean. If `true`, returns a reduced dictionary with key metrics (MSE, RMSE, MAE, ME, AbsME, Huber, Correlation) and their standard errors. Default is `true`.
+- `prefix`: String. Optional prefix for the keys in the output dictionary.
+
+# Returns
+A dictionary containing the computed metrics.
+
+See also: [`eval_metrics`](@ref).
+"""
 function eval_metrics(tray_infl::AbstractArray{F, 3}, tray_infl_pob::AbstractArray{F, 3}; shortmetrics = true, prefix = "") where {F <: AbstractFloat}
     T_infl, M_infl, K_infl = size(tray_infl)
     T_param, M_param, N_batches = size(tray_infl_pob)

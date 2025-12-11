@@ -359,9 +359,16 @@ end
 
 
 """
-    share_combination_weights_rmse(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}) -> Vector{F}
+    share_combination_weights_rmse(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}, λ::AbstractFloat = 0.0) -> Vector{F}
 
 Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the average root mean squared error (RMSE).
+
+Arguments:
+- `tray_infl::AbstractArray{F,3}`: Simulated inflation trajectories.
+- `tray_infl_param::AbstractArray{F,3}`: Parametric inflation trajectories.
+- `λ::AbstractFloat = 0.0`: Regularization parameter to penalize small weights.
+
+See also: [`share_combination_weights_absme`](@ref)
 """
 function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}, λ::AbstractFloat = 0.0) where {F}
 
@@ -429,9 +436,16 @@ end
 
 
 """
-    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}) -> Vector{F}
+    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}, λ::AbstractFloat = 0.0) -> Vector{F}
 
 Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the absolute average mean error.
+
+Arguments:
+- `tray_infl::AbstractArray{F,3}`: Simulated inflation trajectories.
+- `tray_infl_param::AbstractArray{F,3}`: Parametric inflation trajectories.
+- `λ::AbstractFloat = 0.0`: Regularization parameter to penalize small weights.
+
+See also: [`share_combination_weights_rmse`](@ref)
 """
 function share_combination_weights_absme(traj_infl::AbstractArray{F, 3}, traj_infl_param, λ::AbstractFloat = 0.0) where {F}
 
