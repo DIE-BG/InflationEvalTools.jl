@@ -27,6 +27,7 @@ using SharedArrays: SharedArrays, SharedArray, sdata
 using StableRNGs: StableRNGs, StableRNG
 using LinearAlgebra: LinearAlgebra, mul!
 using OnlineStats: OnlineStats
+using Optim
 
 
 ## Default configuration of the seed for the simulation process
@@ -113,7 +114,8 @@ include("simulate/eval_corr_online.jl")
 ## Optimal MSE combination of estimators
 export combination_weights, average_mats
 export ridge_combination_weights, lasso_combination_weights
-export share_combination_weights
+export share_combination_weights, share_combination_weights_rmse
+export share_combination_weights_absme, share_combination_weights_corr
 export elastic_combination_weights
 export metric_combination_weights
 export absme_combination_weights

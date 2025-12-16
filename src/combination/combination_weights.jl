@@ -1,4 +1,4 @@
-## Analytical solution method for optimal MSE linear combination weights 
+## Analytical solution method for optimal MSE linear combination weights
 
 """
     combination_weights(tray_infl, tray_infl_param) -> Vector{<:AbstractFloat}
@@ -22,11 +22,11 @@ function combination_weights(tray_infl, tray_infl_param)
 
     # Optimal least squares combination weights
     a_optim = XᵀX \ Xᵀπ
-    a_optim 
+    return a_optim
 end
 
 # Design and covariance matrix with parameter, averaged over time and
-# across realizations 
+# across realizations
 """
     average_mats(tray_infl, tray_infl_param) -> (Matrix{<:AbstractFloat}, Vector{<:AbstractFloat})
 
@@ -34,7 +34,7 @@ Obtains the matrices `XᵀX` and `Xᵀπ` for the mean squared error minimizatio
 problem. 
 """
 function average_mats(tray_infl, tray_infl_param)
-    # Number of weights, observations, and simulations 
+    # Number of weights, observations, and simulations
     T, n, K = size(tray_infl)
 
     # Build the coefficient matrix
@@ -61,7 +61,7 @@ function average_mats(tray_infl, tray_infl_param)
     # Average over number of realizations
     Xᵀπ /= K
 
-    XᵀX, Xᵀπ
+    return XᵀX, Xᵀπ
 end
 
 # Ridge combination weights with regularization parameter lambda
@@ -87,8 +87,9 @@ See also: [`combination_weights`](@ref), [`lasso_combination_weights`](@ref),
 [`share_combination_weights`](@ref), [`elastic_combination_weights`](@ref).
 """
 function ridge_combination_weights(
-    tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda; 
-    penalize_all = true) where F
+        tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda;
+        penalize_all = true
+    ) where {F}
 
     # If lambda == 0, least squares solution
     lambda == 0 && return combination_weights(tray_infl, tray_infl_param)
@@ -97,7 +98,7 @@ function ridge_combination_weights(
     XᵀX, Xᵀπ = average_mats(tray_infl, tray_infl_param)
     λ = convert(F, lambda)
     n = size(tray_infl, 2)
-    
+
     # Optimal Ridge combination weights
     Iₙ = I(n)
     # If penalize_all=false, do not penalize the first component, which should
@@ -107,10 +108,10 @@ function ridge_combination_weights(
         Iₙ[1] = 0
     end
 
-    XᵀX′ = XᵀX + λ*Iₙ
+    XᵀX′ = XᵀX + λ * Iₙ
     @debug "Determinant of the coefficient matrix" det(XᵀX) det(XᵀX′)
     a_ridge = XᵀX′ \ Xᵀπ
-    a_ridge 
+    return a_ridge
 end
 
 
@@ -151,13 +152,14 @@ Ver también: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref)
 [`share_combination_weights`](@ref), [`elastic_combination_weights`](@ref).
 """
 function lasso_combination_weights(
-    tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda; 
-    max_iterations::Int = 1000, 
-    alpha = F(0.001), 
-    tol = F(1e-4), 
-    show_status = true, 
-    return_cost = false, 
-    penalize_all = true) where F
+        tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda;
+        max_iterations::Int = 1000,
+        alpha = F(0.001),
+        tol = F(1.0e-4),
+        show_status = true,
+        return_cost = false,
+        penalize_all = true
+    ) where {F}
 
     # Si lambda == 0, solución de mínimos cuadrados
     lambda == 0 && return combination_weights(tray_infl, tray_infl_param)
@@ -180,37 +182,37 @@ function lasso_combination_weights(
     for t in 1:max_iterations
         # Computar el gradiente respecto de β
         grad = (XᵀX * β) - Xᵀπ
-		
-		# Proximal gradient 
-		β = proxl1norm(β - α*grad, α*λ; penalize_all)
+
+        # Proximal gradient
+        β = proxl1norm(β - α * grad, α * λ; penalize_all)
 
         # Métrica de costo = MSE + λΣᵢ|βᵢ|
-        mse = β'*XᵀX*β - 2*β'*Xᵀπ + πᵀπ
+        mse = β' * XᵀX * β - 2 * β' * Xᵀπ + πᵀπ
         l1cost = penalize_all ? sum(abs, β) : sum(abs, (@view β[2:end]))
-		cost_vals[t] = mse + λ*l1cost
-		abstol = t > 1 ? abs(cost_vals[t] - cost_vals[t-1]) : 100f0
+        cost_vals[t] = mse + λ * l1cost
+        abstol = t > 1 ? abs(cost_vals[t] - cost_vals[t - 1]) : 100.0f0
 
-		if show_status && t % 100 == 0
-			println("Iter: ", t, " cost = ", cost_vals[t], "  |Δcost| = ", abstol)
-		end
+        if show_status && t % 100 == 0
+            println("Iter: ", t, " cost = ", cost_vals[t], "  |Δcost| = ", abstol)
+        end
 
-        abstol < tol && break 
-	end
-	
+        abstol < tol && break
+    end
+
     return_cost && return β, cost_vals
-	β
+    return β
 end
 
 # Operador próximo para la norma L1 del vector z
 function proxl1norm(z, α; penalize_all = true)
     proxl1 = z - clamp.(z, Ref(-α), Ref(α))
-    
-    # penalize_all = false : no penalizar del intercepto 
+
+    # penalize_all = false : no penalizar del intercepto
     if !penalize_all
         proxl1[1] = z[1]
     end
-    
-    proxl1
+
+    return proxl1
 end
 
 
@@ -235,11 +237,12 @@ Los parámetros opcionales son:
   restringido. 
 """
 function share_combination_weights(
-    tray_infl::AbstractArray{F, 3}, tray_infl_param; 
-    restrict_all::Bool = true, 
-    show_status::Bool = false) where F
+        tray_infl::AbstractArray{F, 3}, tray_infl_param;
+        restrict_all::Bool = true,
+        show_status::Bool = false
+    ) where {F}
 
-    # Insumos para la función de pérdida cuadrática 
+    # Insumos para la función de pérdida cuadrática
     n = size(tray_infl, 2)
     XᵀX, Xᵀπ = average_mats(tray_infl, tray_infl_param)
     πᵀπ = mean(x -> x^2, tray_infl_param)
@@ -250,16 +253,15 @@ function share_combination_weights(
 
     # Problema de optimización restringida
     model = Model(Ipopt.Optimizer)
-	@variable(model, β[1:n] >= 0)
-	@constraint(model, sum(β[r:n]) == 1)
-    @objective(model, Min, β'*XᵀX*β - 2*β'*Xᵀπ + πᵀπ)
-	
-    # Obtener la solución numérica 
-	show_status || set_silent(model)
-	optimize!(model)
-	convert.(F, JuMP.value.(β))
-end 
+    @variable(model, β[1:n] >= 0)
+    @constraint(model, sum(β[r:n]) == 1)
+    @objective(model, Min, β' * XᵀX * β - 2 * β' * Xᵀπ + πᵀπ)
 
+    # Obtener la solución numérica
+    show_status || set_silent(model)
+    optimize!(model)
+    return convert.(F, JuMP.value.(β))
+end
 
 
 # Elastic net
@@ -302,13 +304,14 @@ Ver también: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref)
 [`share_combination_weights`](@ref), [`lasso_combination_weights`](@ref).
 """
 function elastic_combination_weights(
-    tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda, gamma; 
-    max_iterations::Int = 1000, 
-    alpha = F(0.001), 
-    tol = F(1e-4), 
-    show_status::Bool = true, 
-    return_cost::Bool = false, 
-    penalize_all::Bool = true) where F
+        tray_infl::AbstractArray{F, 3}, tray_infl_param, lambda, gamma;
+        max_iterations::Int = 1000,
+        alpha = F(0.001),
+        tol = F(1.0e-4),
+        show_status::Bool = true,
+        return_cost::Bool = false,
+        penalize_all::Bool = true
+    ) where {F}
 
     # Si lambda == 0, solución de mínimos cuadrados
     lambda == 0 && return combination_weights(tray_infl, tray_infl_param)
@@ -331,25 +334,180 @@ function elastic_combination_weights(
     # Proximal gradient descent
     for t in 1:max_iterations
         # Computar el gradiente respecto de β
-        grad = (XᵀX * β) - Xᵀπ + λ*(1-γ)*β
-		
-		# Proximal gradient 
-		β = proxl1norm(β - α*grad, α*λ*γ; penalize_all)
+        grad = (XᵀX * β) - Xᵀπ + λ * (1 - γ) * β
+
+        # Proximal gradient
+        β = proxl1norm(β - α * grad, α * λ * γ; penalize_all)
 
         # Métrica de costo = 0.5MSE + 0.5λ(1-γ)Σᵢ||βᵢ||^2 + γλΣᵢ|βᵢ|
-        mse = β'*XᵀX*β - 2*β'*Xᵀπ + πᵀπ
+        mse = β' * XᵀX * β - 2 * β' * Xᵀπ + πᵀπ
         l1cost = penalize_all ? sum(abs, β) : sum(abs, (@view β[2:end]))
         l2cost = penalize_all ? sum(x -> x^2, β) : sum(x -> x^2, (@view β[2:end]))
-		cost_vals[t] = (1//2)mse + λ*γ*l1cost + (1//2)λ*(1-γ)*l2cost 
-		abstol = t > 1 ? abs(cost_vals[t] - cost_vals[t-1]) : 100f0
+        cost_vals[t] = (1 // 2)mse + λ * γ * l1cost + (1 // 2)λ * (1 - γ) * l2cost
+        abstol = t > 1 ? abs(cost_vals[t] - cost_vals[t - 1]) : 100.0f0
 
-		if show_status && t % 100 == 0
-			println("Iter: ", t, " cost = ", cost_vals[t], "  |Δcost| = ", abstol)
-		end
+        if show_status && t % 100 == 0
+            println("Iter: ", t, " cost = ", cost_vals[t], "  |Δcost| = ", abstol)
+        end
 
-        abstol < tol && break 
-	end
-	
+        abstol < tol && break
+    end
+
     return_cost && return β, cost_vals
-	β
+    return β
+end
+
+
+"""
+    share_combination_weights_rmse(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}, λ::AbstractFloat = 0.0) -> Vector{F}
+
+Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the average root mean squared error (RMSE).
+
+Arguments:
+- `tray_infl::AbstractArray{F,3}`: Simulated inflation trajectories.
+- `tray_infl_param::AbstractArray{F,3}`: Parametric inflation trajectories.
+- `λ::AbstractFloat = 0.0`: Regularization parameter to penalize small weights.
+
+See also: [`share_combination_weights_absme`](@ref)
+"""
+function share_combination_weights_rmse(traj_infl::AbstractArray{F, 3}, traj_infl_param::AbstractArray{F, 3}, λ::AbstractFloat = 0.0) where {F}
+
+    T_traj, N_traj, K_traj = size(traj_infl)
+    T_param, N_param, N_batches = size(traj_infl_param)
+
+    @assert T_traj == T_param "The trajectories and the parameter should have the same number of periods."
+    @assert K_traj % N_batches == 0 "The number of trajectories should be the number of simulations times the numbers of batches."
+
+    # number of simulations per batch
+    N_sim = convert(Int, K_traj / N_batches)
+
+    function rmse_loss(β)
+        # The first level of the loop represents the batch in the trend simulation
+        rmse_b = Vector(undef, N_batches)
+        for b in 1:N_batches
+
+            # taking only the parameter and simulated trajectories for batch b
+            param_b = @view traj_infl_param[:, :, b]
+            traj_b = @view traj_infl[:, :, (1 + N_sim * (b - 1)):(N_sim * b)]
+
+            # The second level of the loop represents the simulations per batch
+            rmse_k = Vector(undef, N_sim)
+            for k in 1:N_sim
+                # The third level is the accumulation of the squared error
+                ∑e² = F(0)
+                for t in 1:T_traj
+                    ∑e² += (traj_b[t, :, k]' * β - param_b[t])^2
+                end
+                # computes N_sim RMSE for batch b
+                rmse_k[k] = sqrt((1 / T_traj) * ∑e²)
+            end
+            # average the k RMSEs for batch b
+            rmse_b[b] = mean(rmse_k)
+        end
+
+        # average the RMSEs across batches
+        return mean(rmse_b)
+    end
+
+    # Definition of the penalty function. it takes a mean to ensure a scalar
+    penalty(β) = mean(λ * sum(1 ./ (100 .* β)))
+
+    # having the loss and the penalty, define a penalized loss function for
+    # the optimizer
+    penalized_loss(β) = (10 * rmse_loss(β)) + penalty(β)
+
+    # restricted optimization problem
+    model = Model(Ipopt.Optimizer)
+    @variable(model, β[1:N_traj] >= 0)
+    @constraint(model, sum(β[1:N_traj]) == 1)
+    @objective(model, Min, penalized_loss(β))
+    optimize!(model)
+
+    # extracting the optimal weights
+    β_opt = convert.(F, JuMP.value.(β))
+
+    return Dict(
+        :value => β_opt,
+        :rmse => rmse_loss(β_opt),
+        :penalty => penalty(β_opt),
+        :penalized_rmse => penalized_loss(β_opt),
+    )
+end
+
+
+"""
+    share_combination_weights_absme(tray_infl::AbstractArray{F,3}, tray_infl_param::AbstractArray{F,3}, λ::AbstractFloat = 0.0) -> Vector{F}
+
+Compute a vector of non-negative weights `β` that sum to 1 by minimizing a nonlinear loss function based on the absolute average mean error.
+
+Arguments:
+- `tray_infl::AbstractArray{F,3}`: Simulated inflation trajectories.
+- `tray_infl_param::AbstractArray{F,3}`: Parametric inflation trajectories.
+- `λ::AbstractFloat = 0.0`: Regularization parameter to penalize small weights.
+
+See also: [`share_combination_weights_rmse`](@ref)
+"""
+function share_combination_weights_absme(traj_infl::AbstractArray{F, 3}, traj_infl_param, λ::AbstractFloat = 0.0) where {F}
+
+    T_traj, N_traj, K_traj = size(traj_infl)
+    T_param, N_param, N_batches = size(traj_infl_param)
+
+    @assert T_traj == T_param "The trajectories and the parameter should have the same number of periods."
+    @assert K_traj % N_batches == 0 "The number of trajectories should be the number of simulations times the numbers of batches."
+
+    # number of simulations per batch
+    N_sim = convert(Int, K_traj / N_batches)
+
+    function absme_loss(β)
+        # The first level of the loop represents the batch in the trend simulation
+        absme_b = Vector(undef, N_batches)
+        for b in 1:N_batches
+
+            # taking only the parameter and simulated trajectories for batch b
+            param_b = @view traj_infl_param[:, :, b]
+            traj_b = @view traj_infl[:, :, (1 + N_sim * (b - 1)):(N_sim * b)]
+
+            # The second level of the loop represents the simulations per batch
+            absme_k = Vector(undef, N_sim)
+            for k in 1:N_sim
+                # The third level is the accumulation of the squared error
+                ∑e = F(0)
+                for t in 1:T_traj
+                    ∑e += (traj_b[t, :, k]' * β - param_b[t])
+                end
+                # computes N_sim ABSME for batch b
+                #absme_k[k] = abs((1 / T_traj) * ∑e)
+                absme_k[k] = (1 / T_traj) * ∑e
+            end
+            # average the k ABSMEs for batch b
+            absme_b[b] = abs(mean(absme_k))
+        end
+        # average the ABSMEs across batches
+        return mean(absme_b)
+    end
+
+    # Definition of the penalty function. it takes a mean to ensure a scalar
+    penalty(β) = mean(λ * sum(1 ./ (100 .* β)))
+
+    # having the loss and the penalty, define a penalized loss function for
+    # the optimizer
+    penalized_loss(β) = (10 * absme_loss(β)) + penalty(β)
+
+    # Problema de optimización restringida
+    model = Model(Ipopt.Optimizer)
+    @variable(model, β[1:N_traj] >= 0)
+    @constraint(model, sum(β[1:N_traj]) == 1)
+
+    @objective(model, Min, penalized_loss(β))
+    optimize!(model)
+
+    # extracting the optimal weights
+    β_opt = convert.(F, JuMP.value.(β))
+
+    return Dict(
+        :value => β_opt,
+        :absme => absme_loss(β_opt),
+        :penalty => penalty(β_opt),
+        :penalized_absme => penalized_loss(β_opt),
+    )
 end
