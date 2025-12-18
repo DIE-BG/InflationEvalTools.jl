@@ -4,7 +4,7 @@ This constant is used to set the random number generator in each
 local process, using the `StableRNG` generator with initial seed zero. The
 seed will be altered in each iteration of the simulation process. This
 guarantees the reproducibility of the results per resampling realization
-by choosing the constant [`DEFAULT_SEED`](@ref).
+by choosing the constant `DEFAULT_SEED`.
 """
 const LOCAL_RNG = StableRNG(0)
 
@@ -15,25 +15,25 @@ const LOCAL_RNG = StableRNG(0)
 # trend function to apply
 
 """
-    pargentrayinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
+    pargentrajinfl(inflfn::F, resamplefn::R, trendfn::T, csdata::CountryStructure; 
         numreplications = 100, 
         rndseed = DEFAULT_SEED, 
         showprogress = true)
 
-Computes `numreplications inflation trajectories using the inflation function
-`inflfn::``InflationFunction`, the resampling function
-`resamplefn::``TrendFunction` and the specified trend function
-`trendfn::``TrendFunction`. The data in the given `CountryStructure`
+Computes `numreplications` inflation trajectories using the inflation function
+`inflfn::InflationFunction`, the resampling function
+`resamplefn::ResampleFunction` and the specified trend function
+`trendfn::TrendFunction`. The data in the given `CountryStructure`
 `csdata` are used.
-tray_infl
-Unlike the [`gentrayinfl`](@ref) function, this function implements
+
+Unlike the [`gentrajinfl`](@ref) function, this function implements
 distributed computation in processes using `@distributed`. This requires that the
 package has been loaded in all compute processes. For example:
 
 ```julia 
 using Distributed
 addprocs(4, exeflags="--project")
-@everywhere using HEMI 
+@everywhere using InflationEvalTools
 ```
 
 To achieve reproducibility between different runs of the function, and thus
@@ -41,7 +41,7 @@ generate inflation trajectories with different methodologies using the same
 resamplings, the generation seed is set according to the iteration number in
 the simulation. To control the start of the trajectory generation, the
 `rndseed` offset parameter is used, whose default value is the seed
-[`DEFAULT_SEED`](@ref).
+`DEFAULT_SEED`.
 """
 function pargentrajinfl(
         inflfn::F, resamplefn::R, trendfn::T,

@@ -1,6 +1,6 @@
 name = "InflationEvalTools"
 uuid = "938eba31-db9c-42f6-bde0-f3baed5865b3"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Rodrigo Chang <rrcp777@gmail.com> and DIE-BG contributors"]
 
 [deps]

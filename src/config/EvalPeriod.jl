@@ -12,7 +12,7 @@ abstract type AbstractEvalPeriod end
     EvalPeriod <: AbstractEvalPeriod
 Type to represent an evaluation period given by the dates `startdate` and
 `finaldate`. A label must be included in the `tag` field to attach to the
-results generated in [`evalsim`](@ref). This period can be provided to a
+results generated in [`compute_lowlevel_sim`](@ref). This period can be provided to a
 [`SimConfig`](@ref) configuration to evaluate over a specific date range.
 
 ## Example
@@ -36,7 +36,7 @@ end
 Type to represent the complete evaluation period, corresponding to the
 inflation periods of the data `CountryStructure`. The default `tag` for
 the complete period is empty (`""`), so that the evaluation metrics in the
-results generated in [`evalsim`](@ref) do not have a prefix, as it is the
+results generated in [`compute_lowlevel_sim`](@ref) do not have a prefix, as it is the
 main evaluation period. This period can be provided to a
 [`SimConfig`](@ref) configuration to evaluate over the entire range of
 simulated inflation dates.

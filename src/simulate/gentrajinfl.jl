@@ -23,7 +23,7 @@ generate inflation trajectories with different methodologies using the same
 resamplings, the generation seed is set according to the iteration number in the
 simulation. To control the start of the trajectory generation, the `rndseed`
 offset parameter is used, whose default value is the seed
-[`DEFAULT_SEED`](@ref).
+`DEFAULT_SEED`.
 """
 function gentrajinfl(
         inflfn::F, resamplefn::R, trendfn::T,

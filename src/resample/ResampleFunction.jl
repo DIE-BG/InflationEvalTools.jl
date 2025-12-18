@@ -86,8 +86,6 @@ paramdatafn = get_param_function(resamplefn)
 # Obtain CountryStructure of parametric data
 paramdata = paramdatafn(gtdata)
 ```
-
-See also: [`param_sbb`](@ref)
 """
 get_param_function(::ResampleFunction) = 
     error("A function must be specified to obtain the parameter of this resampling function")

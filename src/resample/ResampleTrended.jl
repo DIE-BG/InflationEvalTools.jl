@@ -3,6 +3,16 @@
 # trend of the data. The parameter p is individual for each base of a
 # CountryStructure
 
+"""
+    ResampleTrended{T<:AbstractFloat} <: ResampleFunction
+
+Resampling function that uses IID bootstrap weighted by months of occurrence
+with individual parameters for each CPI base, to recreate the trend of the data.
+
+# Fields
+- `p::Vector{T}`: Individual probability parameters for each CPI base, controlling
+  the trend weighting in the resampling process.
+"""
 struct ResampleTrended{T<:AbstractFloat} <: ResampleFunction
     p::Vector{T}
 end

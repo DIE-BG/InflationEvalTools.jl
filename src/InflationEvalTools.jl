@@ -32,7 +32,7 @@ using Optim
 
 ## Default configuration of the seed for the simulation process
 """
-    const DEFAULT_SEED
+    DEFAULT_SEED
 
 Default seed used for the simulation process and the
 reproducibility of the results.

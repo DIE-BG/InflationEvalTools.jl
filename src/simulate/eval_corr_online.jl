@@ -11,7 +11,7 @@ provided in `csdata`, with which the comparison parametric trajectory is to be
 computed. Returns the mean correlation (corr) as a scalar.
 
 This function can be used to optimize the parameters of different
-inflation measures and is more memory efficient than [`pargentrayinfl`](@ref).
+inflation measures and is more memory efficient than [`pargentrajinfl`](@ref).
 """
 function eval_corr_online(config::SimConfig, csdata::CountryStructure; 
     K = 1000, 

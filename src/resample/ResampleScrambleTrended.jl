@@ -2,6 +2,16 @@
 # resampling by months of occurrence, with probabilistic weights to recreate the
 # trend of the data
 
+"""
+    ResampleScrambleTrended <: ResampleFunction
+
+Resampling function that uses IID bootstrap weighted by months of occurrence
+to recreate the trend of the data.
+
+# Fields
+- `p::Float64`: Probability parameter controlling the trend weighting in the
+  resampling process.
+"""
 struct ResampleScrambleTrended <: ResampleFunction
     p::Float64
 end
