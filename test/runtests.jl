@@ -3,19 +3,19 @@ using InflationFunctions
 using CPIDataBase.TestHelpers
 using Test
 
-@testset "InflationEvalTools.jl" begin
+@testset "InflationEvalTools.jl objects" begin
 
-    # Definición de métodos 
-    @test isdefined(InflationEvalTools, :pargentrayinfl)
-    @test isdefined(InflationEvalTools, :gentrayinfl)
+    # Definición de métodos
+    @test isdefined(InflationEvalTools, :pargentrajinfl)
+    @test isdefined(InflationEvalTools, :gentrajinfl)
 
-    # Se exportan funciones de tendencia 
+    # Se exportan funciones de tendencia
     @test @isdefined TrendAnalytical
     @test @isdefined TrendRandomWalk
     @test @isdefined TrendIdentity
     @test @isdefined TrendExponential
-    
-    # Se exportan funciones para parámetros 
+
+    # Se exportan funciones para parámetros
     param_functions = (ParamTotalCPIRebase, ParamTotalCPI, ParamWeightedMean)
     @test @isdefined InflationParameter
     for param_fn in param_functions
@@ -24,30 +24,25 @@ using Test
 end
 
 
-# Pruebas de métodos para Stationary Block Bootstrap
-@testset "Remuestreo con SBB" begin include("resample_SBB.jl") end
+# Tests on trend functions objects
+@testset "Trend Functions" begin
 
-
-# Pruebas sobre funciones de tendencia 
-@testset "Funciones de tendencia" begin
-    
     # Crear un CountryStructure de ceros para pruebas
     cst = getzerocountryst()
-    
+
     trend_functions = (
-        TrendRandomWalk(), 
-        TrendAnalytical(cst, t -> 1 + 0.5sin(2π*t/12), "Tendencia sinusoidal"), 
-        TrendIdentity(), 
-        TrendExponential(cst))
+        TrendRandomWalk(),
+        TrendAnalytical(cst, t -> 1 + 0.5sin(2π * t / 12), "Tendencia sinusoidal"),
+        TrendIdentity(),
+        TrendExponential(cst),
+    )
 
-        LIM_FACTOR = 3
+    LIM_FACTOR = 3
 
-        for trendfn in trend_functions
-
-        @show trendfn
+    for trendfn in trend_functions
 
         # Por el momento, todas las funciones, excepto TrendIdentity, tienen el
-        # campo trend para guardar los valores de tendencia 
+        # campo trend para guardar los valores de tendencia
         if hasproperty(trendfn, :trend)
             # Revisar que todos los factores de tendencia estén entre 0 y LIM_FACTOR
             @test all(0 .< trendfn.trend .< LIM_FACTOR)
@@ -64,11 +59,36 @@ end
 
             if trendfn isa TrendIdentity
                 @test (cst[b].v === trended_cst[b].v)
-            else 
+            else
                 @test !(cst[b].v === trended_cst[b].v)
             end
         end
-    
+
     end
 
+end
+
+
+# Tests for the ResampleIdentity object
+@testset "ResampleIdentity basic behaviour" begin 
+    include("ResampleIdentity_tests.jl")
+end
+
+
+# Tests for the CPIVarietyMatchDistribution and the ResampleSynthetic
+@testset "B-TIMA Extension Tests" begin
+    include("BTIMA_extension_tests.jl")
+end
+
+# Tests for the ResampleMixture object
+include("ResampleMixture_tests.jl")
+
+# Tests for the TrendDynamicRW object
+@testset "TrendDynamicRW Tests" begin
+    include("TrendDynamicRW_tests.jl")
+end
+
+# Tests for SimDynamicConfig and simulation utilities
+@testset "SimDynamicConfig Tests" begin
+    include("SimDynamicConfig_tests.jl")
 end

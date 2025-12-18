@@ -1,0 +1,62 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+
+## [0.5.1] - 2025-12
+
+### Fixed
+
+- Added docstrings and fixed online documentation building. 
+
+## [0.5.0] - 2025-12
+
+### Added
+
+-   Added a new method to `eval_metrics` that accepts multiple inflation trajectories through the `tray_infl_pob` parameter. This method performs plausibility checks intended for batch-evaluation schemes where each batch corresponds to a different population trajectory.
+-   Added a new keyword parameter to `metric_combination_weights` that allows specifying a regularization function applied to the weight vector. By default, the regularization function returns zero.
+-   Added the functions `share_combination_weights_rmse` and `share_combination_weights_abme` to compute optimal, regularized, constrained linear combinations using JuMP.jl with Ipopt.jl. These functions accept inflation trajectories and population trajectories to support batch-based optimization workflows.
+
+## [0.4.0] - 2025-11
+
+### Added
+
+-   New trend function `TrendDynamicRW` that builds an autoregressive process (or, optionally, a random walk process) to estimate the asssessment metrics without conditioning to specific realizations of the stochastic process.
+-   Added a new simulation configuration `SimDynamicConfig` to handle the upper-level simulation with several random-walk processes. The `compute_lowlevel_sim`, `compute_assessment_sim` and `run_assessment_batch` functions now work for this configuration.
+
+## [0.3.1] - 2025-10
+
+### Changed
+
+-   `run_assessment_batch` now checks if the results file exists already and skips the simulation configuration by default. Use the parameter `recompute=true` to force recomputing and saving the results.
+
+## [0.3.0] - 2025-10
+
+### Added
+
+-   Type `CPIVarietyMatchDistribution` to resample as in the B-TIMA extension methodology. It uses two arrays of monthly price changes, a prior and an actual empirical distribution. It can be configured to sample from the prior distribution, the actual distribution or a synthtetic distribution that gives different weights according to the mean of the actual observations.
+-   Resampling function `ResampleExtendedSVM` to sample CPI datasets as in the original B-TIMA methodology, but allowing for more periods in the sampling.
+-   Resampling function `ResampleSynthetic` to implement an interface to resample `VarCPIBase` objects.
+-   Resampling function `ResampleIdentity` to resample `CountryStructure`s and `VarCPIBase` objects.
+-   Resampling function `ResampleMixture` to implement an ensemble of samplers for the `VarCPIBase` components. This allows setting mixed resampling schemes for different CPI datasets. For example, in a `CountryStructure` with two `VarCPIBase`s, not resampling the first dataset (`ResampleIdentity`) and using the same calendar months for the second CPI dataset (`ResampleScrambleVarMonths`).
+    -   There is an internal function `_fix_countrystructure_dates(cs::CountryStructure)` to fix the dates of an expanded `CountryStructure`. The function is defined in `ResampleExtendedSVM.jl` but used also in `ResampleMixture.jl`.
+
+### Changed
+
+-   Refactored `evalsim` into `compute_lowlevel_sim`.
+-   Refactored `makesim` into `compute_assessment_sim`.
+-   Refactored `run_batch` into `run_assessment_batch`.
+-   Make concrete type `PeriodVector` public.
+-   Removed `ResampleSBB`, `ResampleGSBB` and `ResampleGSBBMod`.
+-   Removed `CrossEvalConfig` type and methods.
+
+## [0.2.1] - 2025-09
+
+### Fixed
+
+-   Improved documentation of assessment functions and types.
+
+## [0.2.0] - 2025-07
+
+### Added
+
+-   Internal package became public.

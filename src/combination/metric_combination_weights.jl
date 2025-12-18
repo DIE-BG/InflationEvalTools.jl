@@ -1,28 +1,30 @@
-# Función de apoyo para evaluar la métrica de la combinación lineal
-function eval_combination(tray_infl::AbstractArray{F, 3}, tray_infl_param, w; 
-    metric::Symbol = :corr, 
-    sum_abstol::AbstractFloat = 1f-2) where F
+# Support function to evaluate the metric of the linear combination
+function eval_combination(
+        tray_infl::AbstractArray{F, 3}, tray_infl_param, w;
+        metric::Symbol = :corr,
+        sum_abstol::AbstractFloat = 1.0f-2
+    ) where {F}
 
     n = size(tray_infl, 2)
-    s = metric == :corr ? -1 : 1 # signo para métrica objetivo
+    s = metric == :corr ? -1 : 1 # sign for objective metric
 
-    bp = 2 * one(F) # penalización base sobre signos
-    restp = 5 * one(F) # penalización sobre la restricción de suma
+    bp = 2 * one(F) # base penalty for signs
+    restp = 5 * one(F) # penalty for sum constraint
 
     penalty = zero(F)
-    for i in 1:n 
-        if w[i] < 0 
+    for i in 1:n
+        if w[i] < 0
             penalty += bp - 2(w[i])
         end
     end
-    if !(abs(sum(w) - 1) < sum_abstol) 
+    if !(abs(sum(w) - 1) < sum_abstol)
         penalty += restp + 2 * abs(sum(w) - 1)
-    end 
-    penalty != 0 && return penalty 
+    end
+    penalty != 0 && return penalty
 
-    # Computar la métrica y retornar su valor
+    # Compute the metric and return its value
     obj = combination_metrics(tray_infl, tray_infl_param, w)[metric]
-    s*obj
+    return s * obj
 end
 
 
@@ -34,64 +36,68 @@ end
         f_abstol::AbstractFloat = 1f-4, 
         max_iterations::Int = 1000) where F
 
-Obtiene ponderadores óptimos de combinación para la métrica `metric` a través de
-una aproximación iterativa al problema de optimización de dicha métrica de la
-combinación lineal de estimadores de inflación en `tray_infl` utilizando la
-trayectoria de inflación paramétrica `tray_infl_param`.
+Obtains optimal combination weights for the metric `metric` through
+an iterative approximation to the optimization problem of that metric for the
+linear combination of inflation estimators in `tray_infl` using the parametric
+inflation trajectory `tray_infl_param`.
 
-Los parámetros opcionales son: 
-- `metric::Symbol = :corr`: métrica a optimizar. Si se trata de la correlación
-  lineal, la métrica es maximizada. El resto de métricas son minimizadas. Véase
-  también [`eval_metrics`](@ref).
-- `w_start = nothing`: ponderadores iniciales de búsqueda. Típicamente, un
-  vector de valores flotantes.
-- `x_abstol::AbstractFloat = 1f-2`: desviación absoluta máxima de los
-  ponderadores. 
-- `f_abstol::AbstractFloat = 1f-4`: desviación absoluta máxima en la función de
-  costo.
-- `sum_abstol::AbstractFloat = 1f-2`: desviación absoluta permisible máxima en
-  la suma de ponderadores, respecto de la unidad.
-- `max_iterations::Int = 1000`: número máximo de iteraciones. 
+Optional parameters: 
+- `metric::Symbol = :corr`: metric to optimize. If it is linear correlation,
+  the metric is maximized. The rest of the metrics are minimized. See also
+  [`eval_metrics`](@ref).
+- `w_start = nothing`: initial search weights. Typically, a vector of floating
+  point values.
+- `x_abstol::AbstractFloat = 1f-2`: maximum absolute deviation of the weights. 
+- `f_abstol::AbstractFloat = 1f-4`: maximum absolute deviation in the cost
+  function.
+- `sum_abstol::AbstractFloat = 1f-2`: maximum permissible absolute deviation in
+  the sum of weights, with respect to one.
+- `max_iterations::Int = 1000`: maximum number of iterations. 
+- `penalty::Function = w -> zero(F)`: penalty function applied to weights. 
 
-Devuelve un vector con los ponderadores asociados a cada estimador en las
-columnas de `tray_infl`.
+Returns a vector with the weights associated with each estimator in the
+columns of `tray_infl`.
 
-Ver también: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref),
+See also: [`combination_weights`](@ref), [`ridge_combination_weights`](@ref),
 [`share_combination_weights`](@ref), [`elastic_combination_weights`](@ref).
 """
-function metric_combination_weights(tray_infl::AbstractArray{F, 3}, tray_infl_param; 
-    metric::Symbol = :corr, 
-    w_start = nothing, 
-    x_abstol::AbstractFloat = 1f-2, 
-    f_abstol::AbstractFloat = 1f-4, 
-    sum_abstol::AbstractFloat = 1f-4, 
-    max_iterations::Int = 1000) where F
+function metric_combination_weights(
+        tray_infl::AbstractArray{F, 3}, tray_infl_param;
+        penalty::Function = w -> zero(F),
+        metric::Symbol = :corr,
+        w_start = nothing,
+        x_abstol::AbstractFloat = 1.0f-2,
+        f_abstol::AbstractFloat = 1.0f-4,
+        sum_abstol::AbstractFloat = 1.0f-4,
+        max_iterations::Int = 1000
+    ) where {F}
 
-    # Número de ponderadores 
+    # Number of weights
     n = size(tray_infl, 2)
 
-    # Punto inicial
+    # Initial point
     if isnothing(w_start)
         w0 = ones(F, n) / n
     else
         w0 = w_start
     end
 
-    # Cerradura de función objetivo
-    objectivefn = w -> eval_combination(tray_infl, tray_infl_param, w; metric, sum_abstol)
-
-    # Optimización iterativa
+    # Objective function closure
+    objectivefn = w -> eval_combination(tray_infl, tray_infl_param, w; metric, sum_abstol) + penalty(w)
+    # Iterative optimization
     optres = Optim.optimize(
-        objectivefn, # Función objetivo 
-        zeros(F, n), ones(F, n), # Límites
-        w0, # Punto inicial de búsqueda 
-        Optim.NelderMead(), # Método de optimización 
+        objectivefn, # Objective function
+        zeros(F, n), ones(F, n), # Bounds
+        w0, # Initial search point
+        Optim.NelderMead(), # Optimization method
         Optim.Options(
-            x_abstol = x_abstol, f_abstol = f_abstol, 
-            show_trace = true, extended_trace=true, 
-            iterations = max_iterations))
+            x_abstol = x_abstol, f_abstol = f_abstol,
+            show_trace = true, extended_trace = true,
+            iterations = max_iterations
+        )
+    )
 
-    # Obtener los ponderadores
+    # Get the weights
     wf = Optim.minimizer(optres)
-    wf
+    return wf
 end

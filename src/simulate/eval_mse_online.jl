@@ -1,27 +1,27 @@
-# eval_mse_online.jl - Generación de MSE de optimización online  
+# eval_mse_online.jl - Generation of online optimization MSE  
 
 """
     eval_mse_online(config::SimConfig, csdata::CountryStructure; 
         K = 1000, 
         rndseed = DEFAULT_SEED) -> mse
 
-Función para obtener evaluación de error cuadrático medio utilizando
-configuración de evaluación [`SimConfig`](@ref). Se deben proveer los datos de
-evaluación en `csdata`, con los cuales se desee computar la trayectoria
-paramétrica de comparación. Devuelve el MSE como un escalar.
+Function to obtain mean squared error evaluation using
+[`SimConfig`](@ref) evaluation configuration. The evaluation data must be
+provided in `csdata`, with which the comparison parametric trajectory is to be
+computed. Returns the MSE as a scalar.
 
-Esta función se puede utilizar para optimizar los parámetros de diferentes
-medidas de inflación y es más eficiente en memoria que [`pargentrayinfl`](@ref). 
+This function can be used to optimize the parameters of different
+inflation measures and is more memory efficient than [`pargentrajinfl`](@ref).
 """
 function eval_mse_online(config::SimConfig, csdata::CountryStructure; 
     K = 1000, 
     rndseed = DEFAULT_SEED)
 
-    # Crear el parámetro y obtener la trayectoria paramétrica
+    # Create the parameter and obtain the parametric trajectory
     param = InflationParameter(config.paramfn, config.resamplefn, config.trendfn)
     tray_infl_param = param(csdata)
 
-    # Desempaquetar la configuración 
+    # Unpack the configuration
     eval_mse_online(config.inflfn, config.resamplefn, config.trendfn, csdata, tray_infl_param; K, rndseed)
 end
 
@@ -35,10 +35,10 @@ end
         tray_infl_param::Vector{<:AbstractFloat}; 
         K = 1000, rndseed = DEFAULT_SEED) -> mse
 
-Función para obtener evaluación de error cuadrático medio (MSE) utilizando la
-configuración especificada. Se requiere la trayectoria paramétrica
-`tray_infl_param` para evitar su cómputo repetidamente en esta función. Devuelve
-el MSE como un escalar.
+Function to obtain mean squared error (MSE) evaluation using the
+specified configuration. The parametric trajectory
+`tray_infl_param` is required to avoid repeatedly computing it in this function. Returns
+the MSE as a scalar.
 """
 function eval_mse_online(
     inflfn::InflationFunction,
@@ -48,17 +48,17 @@ function eval_mse_online(
     tray_infl_param::Vector{<:AbstractFloat}; 
     K = 1000, rndseed = DEFAULT_SEED)
 
-    # Tarea de cómputo de trayectorias
-    mse = @showprogress @distributed (OnlineStats.merge) for k in 1:K 
-        # Configurar la semilla en el proceso
+    # Trajectory computation task
+    mse = @showprogress @distributed (merge) for k in 1:K 
+        # Set the seed in the process
         Random.seed!(LOCAL_RNG, rndseed + k)
 
-        # Muestra de bootstrap de los datos 
+        # Bootstrap sample of the data
         bootsample = resamplefn(csdata, LOCAL_RNG)
-        # Aplicación de la función de tendencia 
+        # Application of the trend function
         trended_sample = trendfn(bootsample)
 
-        # Computar la medida de inflación y el MSE
+        # Compute the inflation measure and the MSE
         tray_infl = inflfn(trended_sample)
         sq_err = (tray_infl - tray_infl_param) .^ 2
         o = OnlineStats.Mean(eltype(csdata))
