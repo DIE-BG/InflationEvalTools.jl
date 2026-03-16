@@ -123,6 +123,10 @@ include("combination/combination_weights.jl")
 include("combination/metric_combination_weights.jl")
 include("combination/absme_combination_weights.jl")
 
+# Experimental functions for complexity-based combination weights
+export share_combination_complexity_weights_rmse
+include("combination/complexity_weights.jl")
+
 ## Functions in development
 
 end
