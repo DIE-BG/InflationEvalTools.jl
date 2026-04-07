@@ -13,8 +13,8 @@ import Random
 CPIDataGT.load_data()
 include("BTIMA_extension_helpers.jl")  # Extension helper functions
 
-# Test data
-GT24_test = GTDATA24[Date(2025,1), Date(2025,9)].base[1]
+# Test data (from "BTIMA_extension_helpers.jl")
+GT24_test = GT24_CALIB
 
 allin(v_sample, v_collection) = all(in.(v_sample, Ref(v_collection)))
 nonein(v_sample, v_collection) = !any(in.(v_sample, Ref(v_collection)))
