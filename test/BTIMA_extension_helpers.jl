@@ -1,5 +1,27 @@
 using CPIDataGT
+CPIDataGT.load_data()
 CPIDataGT.load_tree_data()
+
+## Calibration data 
+
+# Set this calibration date
+CALIB_DATE = Date(2025, 9)
+@warn "Calibration date for the matching process set to $CALIB_DATE"
+
+dates_mask = GT24.dates .<= CALIB_DATE
+FGT24_CALIB = FullCPIBase(
+    FGT24.ipc[dates_mask, :],
+    FGT24.v[dates_mask, :],
+    FGT24.w,
+    Date(2025, 1):Month(1):CALIB_DATE,
+    FGT24.baseindex,
+    FGT24.codes, 
+    FGT24.names,
+)
+
+GT24_CALIB = VarCPIBase(FGT24_CALIB)
+
+## Helper functions
 
 # Finds the indices of codes in the FullCPIBase
 findcode(code::AbstractString, base::FullCPIBase) = findfirst(==(code), base.codes)
@@ -28,9 +50,9 @@ function distrv23(i_23::Int, m::Int)
         i_24 = i_23 
     end
     # Get available observations
-    m_available = periods(GT24)
+    m_available = periods(GT24_CALIB)
     if (m <= m_available)
-        v_23 = [FGT23.v[m:12:end, i_23]..., FGT24.v[m:12:end, i_24]...]
+        v_23 = [FGT23.v[m:12:end, i_23]..., FGT24_CALIB.v[m:12:end, i_24]...]
     else
         v_23 = FGT23.v[m:12:end, i_23]
     end
