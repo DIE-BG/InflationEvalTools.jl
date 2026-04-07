@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2026-04
+
+### Added
+
+-   Added the function `share_combination_complexity_weights_rmse` to compute optimal, complexity-based regularized, constrained linear combinations using JuMP.jl with Ipopt.jl. The function requires a vector of complexity factors used to add a complexity penalty for measures with the most flexibility and/or number of parameters.
+
 ## [0.5.1] - 2025-12
 
 ### Fixed
